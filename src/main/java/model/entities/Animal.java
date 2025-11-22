@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Data;
 
 /**
- * Represents an animal in a territory section.
+ * Represents an animal in a territory section
  */
 @Data
 public class Animal implements EnvironmentEntity {
@@ -27,4 +27,16 @@ public class Animal implements EnvironmentEntity {
         return entities;
     }
 
+    @Override
+    public double giveRobotDamage() {
+        int possibilityAttack = switch (type) {
+            case "Herbivores" -> 85;
+            case "Carnivores" -> 30;
+            case "Omnivores" -> 60;
+            case "Detritivores" -> 90;
+            case "Parasites" -> 10;
+            default -> 0;
+        };
+        return (100 - possibilityAttack) / 10.0;
+    }
 }

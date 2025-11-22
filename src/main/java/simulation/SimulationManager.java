@@ -9,7 +9,7 @@ import fileio.SimulationInput;
 import java.util.List;
 
 /**
- * Coordinates multiple simulations and command execution.
+ * Coordinates multiple simulations and command execution
  */
 public class SimulationManager {
 
@@ -71,7 +71,7 @@ public class SimulationManager {
         int currentSimulationIndex = 0;
 
         for (CommandInput cmd : commands) {
-            String name = cmd.getCommand();
+            String name  = cmd.getCommand();
 
             switch (name) {
                 case "startSimulation" -> {
@@ -85,7 +85,7 @@ public class SimulationManager {
                         output.add(error);
                         continue;
                     }
-                    SimulationInput simInput = simulations.get(currentSimulationIndex);
+                    SimulationInput simInput = simulations.get(currentSimulationIndex++);
                     currentSimulation = simulationFactory.build(simInput);
 
                     executeCommand(currentSimulation, cmd, output);
@@ -93,7 +93,6 @@ public class SimulationManager {
                 case "endSimulation" -> {
                     executeCommand(currentSimulation, cmd, output);
                     currentSimulation = null;
-                    currentSimulationIndex++;
                 }
                 default -> executeCommand(currentSimulation, cmd, output);
             }
@@ -101,7 +100,7 @@ public class SimulationManager {
     }
 
     /**
-     * Executes a single command within the context of the given simulation.
+     * Executes a single command within the context of the given simulation
      *
      * @param simulation current simulation instance
      * @param command    command to execute

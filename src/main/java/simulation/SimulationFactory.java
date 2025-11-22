@@ -21,12 +21,12 @@ import model.robot.TerraBot;
 import java.util.List;
 
 /**
- * Builds Simulation instances from input data.
+ * Builds Simulation instances from input data
  */
 public class SimulationFactory {
 
     /**
-     * Creates a {@link Simulation} instance based on the given input parameters.
+     * Creates a {@link Simulation} instance based on the given input parameters
      *
      * @param input simulation parameters
      * @return a new Simulation instance
@@ -43,7 +43,7 @@ public class SimulationFactory {
 
         Territory territory = new Territory(width, height);
 
-        // The robot starts at position (0, 0).
+        // The robot starts at position (0, 0)
         Position startingPosition = new Position(0, 0);
         TerraBot terraBot = new TerraBot(startingPosition, input.getEnergyPoints());
 
@@ -175,7 +175,7 @@ public class SimulationFactory {
 
     /**
      * Ensures that a {@link Section} exists at the given position
-     * in the territory, creating it if necessary.
+     * in the territory, creating it if necessary
      */
     private Section ensureSection(final Territory territory, final PairInput pos) {
         Section[][] grid = territory.getSections();

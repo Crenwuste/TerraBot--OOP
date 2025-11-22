@@ -28,4 +28,27 @@ public class Plant implements EnvironmentEntity {
         return entities;
     }
 
+    @Override
+    public double giveRobotDamage() {
+        int possibilityStuck = switch (type) {
+            case "FloweringPlants" -> 90;
+            case "Gymnosperms" -> 60;
+            case "Ferns" -> 30;
+            case "Mosses" -> 40;
+            case "Algae" -> 20;
+            default -> 0;
+        };
+        return possibilityStuck / 100.0;
+    }
+
+    public double oxygenProduced() {
+        return switch (type) {
+            case "FloweringPlants" -> 6 + ageSurplus;
+            case "Gymnosperms" -> ageSurplus;
+            case "Ferns" -> ageSurplus;
+            case "Mosses" -> 0.8 + ageSurplus;
+            case "Algae" -> 0.5 + ageSurplus;
+            default -> 0;
+        };
+    }
 }

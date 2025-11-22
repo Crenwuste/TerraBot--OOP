@@ -3,24 +3,23 @@ package model.environment;
 import lombok.Getter;
 
 /**
- * Represents the entire territory explored by TerraBot.
+ * Represents the entire territory explored by TerraBot
  */
 @Getter
 public class Territory {
 
     /**
-     * Number of columns of the territory grid.
+     * Number of columns of the territory grid
      */
     private final int width;
 
     /**
-     * Number of rows of the territory grid.
+     * Number of rows of the territory grid
      */
     private final int height;
 
     /**
-     * Two-dimensional grid of sections.
-     * Indexing convention: sections[x][y].
+     * Two-dimensional grid of sections
      */
     private final Section[][] sections;
 

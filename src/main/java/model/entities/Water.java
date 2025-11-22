@@ -31,4 +31,8 @@ public class Water implements EnvironmentEntity {
         return entities;
     }
 
+    @Override
+    public double giveRobotDamage() {
+        return 0;
+    }
 }

@@ -1,11 +1,13 @@
 package model.entities;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import fileio.CommandInput;
 import lombok.Data;
 
 /**
- * Represents air conditions in a territory section.
+ * Represents air conditions in a territory section
  */
 @Data
 public class Air implements EnvironmentEntity {
@@ -23,6 +25,7 @@ public class Air implements EnvironmentEntity {
     private double dustParticles;
 
     private double airQuality = 0;
+    private double changedAirQuality;
 
     private double clampAndRound(final double value) {
         double aux = Math.max(0, Math.min(100, value));
@@ -30,18 +33,15 @@ public class Air implements EnvironmentEntity {
     }
 
     public void calculateQuality() {
-        if (co2Level != 0) {
-            airQuality = oxygenLevel * 2 + humidity * 0.5 - co2Level * 0.01;
-        } else if (iceCrystalConcentration != 0) {
-            airQuality = oxygenLevel * 2 + (100 - Math.abs(temperature)) - iceCrystalConcentration * 0.05;
-        } else if (pollenLevel != 0) {
-            airQuality = oxygenLevel * 2 + humidity * 0.7 - pollenLevel * 0.1;
-        } else if (dustParticles != 0) {
-            airQuality = oxygenLevel * 2 - dustParticles * 0.2 - temperature * 0.3;
-        } else if (altitude != 0) {
-            double oxygenFactor = oxygenLevel - (altitude / 1000 * 0.5);
-            airQuality = oxygenFactor * 2 + humidity * 0.6;
-        }
+        airQuality = switch (type) {
+            case "TropicalAir" -> oxygenLevel * 2 + humidity * 0.5 - co2Level * 0.01;
+            case "PolarAir" -> oxygenLevel * 2 + (100 - Math.abs(temperature))
+                    - iceCrystalConcentration * 0.05;
+            case "TemperateAir" -> oxygenLevel * 2 + humidity * 0.7 - pollenLevel * 0.1;
+            case "DesertAir" -> oxygenLevel * 2 - dustParticles * 0.2 - temperature * 0.3;
+            case "MountainAir" -> (oxygenLevel - (altitude / 1000 * 0.5)) * 2 + humidity * 0.6;
+            default -> 0;
+        };
         airQuality = clampAndRound(airQuality);
     }
 
@@ -67,19 +67,56 @@ public class Air implements EnvironmentEntity {
         entities.put("temperature", temperature);
         entities.put("oxygenLevel", oxygenLevel);
         entities.put("airQuality", airQuality);
-        if (co2Level != 0) {
-            entities.put("co2Level", co2Level);
-        } else if (iceCrystalConcentration != 0) {
-            entities.put("iceCrystalConcentration", iceCrystalConcentration);
-        } else if (pollenLevel != 0) {
-            entities.put("pollenLevel", pollenLevel);
-        } else if (dustParticles != 0) {
-            entities.put("dustParticles", dustParticles);
-        } else if (altitude != 0) {
-            entities.put("altitude", altitude);
+        switch (type) {
+            case "TropicalAir" -> entities.put("co2Level", co2Level);
+            case "PolarAir" ->entities.put("iceCrystalConcentration", iceCrystalConcentration);
+            case "TemperateAir" -> entities.put("pollenLevel", pollenLevel);
+            case "DesertAir" -> entities.put("dustParticles", dustParticles);
+            case "MountainAir" -> entities.put("altitude", altitude);
+            default -> { }
         }
 
         return entities;
     }
 
+    @Override
+    public double giveRobotDamage() {
+        return toxicityAQ();
+    }
+
+    public double toxicityAQ() {
+        calculateQuality();
+        int maxScore = switch (type) {
+            case "TropicalAir" -> 82;
+            case "PolarAir" -> 142;
+            case "TemperateAir" -> 84;
+            case "DesertAir" -> 65;
+            case "MountainAir" -> 78;
+            default -> 0;
+        };
+
+        double toxicity = 100 * (1 - (airQuality / maxScore));
+        toxicity = clampAndRound(toxicity);
+
+        // true -> toxic, false -> non-toxic
+        //return toxicity > 0.8 * maxScore;
+        return toxicity;
+    }
+
+    public boolean changeWeather(final CommandInput cmd) {
+        calculateQuality();
+        double aux = airQuality;
+        airQuality = switch (cmd.getType()) {
+            case "rainfall" -> airQuality + (cmd.getRainfall() * 0.3);
+            case "polarStorm" -> airQuality - (cmd.getWindSpeed() * 0.2);
+            case "newSeason" ->
+                    airQuality - (cmd.getSeason().equalsIgnoreCase("Spring") ? 15 : 0);
+            case "desertStorm" -> airQuality - (cmd.isDesertStorm() ? 30 : 0);
+            case "peopleHiking" -> airQuality - (cmd.getNumberOfHikers() * 0.1);
+            default -> airQuality;
+        };
+
+        // false -> if airQuality doesn't change; true -> if it changes
+        return aux != airQuality;
+    }
 }

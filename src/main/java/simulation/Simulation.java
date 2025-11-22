@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fileio.CommandInput;
 import lombok.Getter;
+import model.entities.Water;
 import model.entities.Air;
 import model.entities.Animal;
 import model.entities.Plant;
 import model.entities.Soil;
-import model.entities.Water;
 import model.environment.Section;
 import model.environment.Territory;
 import model.robot.TerraBot;
@@ -36,9 +36,11 @@ public class Simulation {
     private boolean running;
 
     /**
-     * Flag indicating whether the robot is currently charging
+     * Indicating the timestamp at witch the charging ends
      */
     private int charging = 0;
+
+    private int changeWeather = 0;
 
     /**
      * Creates a new simulation for the given territory and robot
@@ -52,7 +54,7 @@ public class Simulation {
     }
 
     /**
-     * Executes a single command within this simulation.
+     * Executes a single command within this simulation
      *
      * @param command the command to execute
      * @param output  the output array where the result node should be added
@@ -63,8 +65,8 @@ public class Simulation {
                                final ObjectMapper mapper) {
         Section[][] section = territory.getSections();
 
-        for (int i = 0; i < territory.getWidth(); i++) {
-            for (int j = 0; j < territory.getWidth(); j++) {
+        for (int i = 0; i < territory.getHeight(); i++) {
+            for (int j = 0; j < territory.getHeight(); j++) {
                 Soil soil = section[i][j].getSoil();
                 Air air = section[i][j].getAir();
                 Animal animal = section[i][j].getAnimal();
@@ -72,61 +74,49 @@ public class Simulation {
                 Water water = section[i][j].getWater();
 
                 soil.calculateQuality();
-                air.calculateQuality();
+                if (changeWeather <= command.getTimestamp()) {
+                    air.calculateQuality();
+                }
             }
         }
 
+
         String name = command.getCommand();
+        if (charging > command.getTimestamp()) {
+            ObjectNode node = mapper.createObjectNode();
+            node.put("command", command.getCommand());
+            node.put("message", "ERROR: Robot still charging. Cannot perform action");
+            node.put("timestamp", command.getTimestamp());
+
+            output.add(node);
+            return;
+        }
 
         switch (name) {
-            case "startSimulation" -> {
-                startSimulation(command, output, mapper);
-                break;
-            }
-            case "endSimulation" -> {
+            case "startSimulation" ->
+                    startSimulation(command, output, mapper);
+            case "endSimulation" ->
                 endSimulation(command, output, mapper);
-                break;
-            }
-            case "printEnvConditions"  -> {
+            case "printEnvConditions"  ->
                 printEnvConditions(command, output, mapper);
-                break;
-            }
-            case "printMap"  -> {
+            case "printMap"  ->
                 printMap(command, output, mapper);
-                break;
-            }
-            case "moveRobot" -> {
+            case "moveRobot" ->
                 moveRobot(command, output, mapper);
-                break;
-            }
-            case "scanObject"  -> {
+            case "scanObject"  ->
                 scanObject(command, output, mapper);
-                break;
-            }
-            case "learnFact"  -> {
+            case "learnFact"  ->
                 learnFact(command, output, mapper);
-                break;
-            }
-            case "improveEnvironment"   -> {
+            case "improveEnvironment"   ->
                 improveEnvironment(command, output, mapper);
-                break;
-            }
-            case "changeWeatherConditions"   -> {
+            case "changeWeatherConditions"   ->
                 changeWeatherConditions(command, output, mapper);
-                break;
-            }
-            case "rechargeBattery"   -> {
+            case "rechargeBattery"   ->
                 rechargeBattery(command, output, mapper);
-                break;
-            }
-            case "getEnergyStatus" -> {
+            case "getEnergyStatus" ->
                 getEnergyStatus(command, output, mapper);
-                break;
-            }
-            case "printKnowledgeBase"   -> {
+            case "printKnowledgeBase"   ->
                 printKnowledgeBase(command, output, mapper);
-                break;
-            }
             default ->  throw new IllegalArgumentException("Invalid command");
         }
     }
@@ -189,6 +179,7 @@ public class Simulation {
         node.put("timestamp", command.getTimestamp());
 
         output.add(node);
+
     }
 
     /**
@@ -199,7 +190,7 @@ public class Simulation {
                          final ObjectMapper mapper) {
         ArrayNode outputArray = mapper.createArrayNode();
 
-        for (int i = 0; i < territory.getWidth(); i++) {
+        for (int i = 0; i < territory.getHeight(); i++) {
             for (int j = 0; j < territory.getWidth(); j++) {
                 int objCount = 0;
                 ObjectNode sectionNode = mapper.createObjectNode();
@@ -246,6 +237,77 @@ public class Simulation {
     public void moveRobot(final CommandInput command,
                           final ArrayNode output,
                           final ObjectMapper mapper) {
+        int x = terraBot.getPosition().getX();
+        int y = terraBot.getPosition().getY();
+
+        int up = moveRobotHelper(x, y + 1);
+        int right = moveRobotHelper(x + 1, y);
+        int down = moveRobotHelper(x, y - 1);
+        int left = moveRobotHelper(x - 1, y);
+
+        int min = up;
+        int xNew = x, yNew = y + 1;
+        if (right < min) {
+            min = right;
+            xNew = x + 1;
+            yNew = y;
+        }
+        if (down < min) {
+            min = down;
+            xNew = x;
+            yNew = y - 1;
+        }
+        if (left < min) {
+            min = left;
+            xNew = x - 1;
+            yNew = y;
+        }
+
+        String msg;
+        if (min <= terraBot.getEnergyPoints()) {
+            terraBot.getPosition().setX(xNew);
+            terraBot.getPosition().setY(yNew);
+            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - min);
+            msg = "The robot has successfully moved to position (" + xNew + ", " + yNew + ").";
+
+        } else {
+            msg = "ERROR: Not enough battery left. Cannot perform action";
+        }
+
+        ObjectNode node = mapper.createObjectNode();
+        node.put("command", command.getCommand());
+        node.put("message", msg);
+        node.put("timestamp", command.getTimestamp());
+
+        output.add(node);
+    }
+
+    private int moveRobotHelper(final int x, final int y) {
+        if (x < 0 || y < 0 || x >= territory.getWidth() || y >= territory.getHeight()) {
+            return 999;
+        }
+
+        Section[][] section = territory.getSections();
+
+        double soil = section[x][y].getSoil().giveRobotDamage();
+        double air = section[x][y].getAir().giveRobotDamage();
+
+        int count = 2;
+
+        double animal = 0;
+        if (section[x][y].getAnimal() != null) {
+            animal = section[x][y].getAnimal().giveRobotDamage();
+            count++;
+        }
+        double plant = 0;
+        if (section[x][y].getPlant() != null) {
+            plant = section[x][y].getPlant().giveRobotDamage();
+            count++;
+        }
+
+        double sum = soil + air + animal + plant;
+        double mean = Math.abs(sum / count);
+        return (int) Math.round(mean);
     }
 
     /**
@@ -254,6 +316,18 @@ public class Simulation {
     public void scanObject(final CommandInput command,
                            final ArrayNode output,
                            final ObjectMapper mapper) {
+        String msg = "";
+
+        if (7 <= terraBot.getEnergyPoints()) {
+            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 7);
+        }
+
+        ObjectNode node = mapper.createObjectNode();
+        node.put("command", command.getCommand());
+        node.put("message", msg);
+        node.put("timestamp", command.getTimestamp());
+
+        output.add(node);
     }
 
     /**
@@ -278,6 +352,45 @@ public class Simulation {
     public void changeWeatherConditions(final CommandInput command,
                                         final ArrayNode output,
                                         final ObjectMapper mapper) {
+        String msg = "";
+        for (int i = 0; i < territory.getHeight(); i++) {
+            for (int j = 0; j < territory.getWidth(); j++) {
+                Air air = territory.getSections()[i][j].getAir();
+                if (changeWeatherHelper(command, air)) {
+                    if (air.changeWeather(command)) {
+                        msg = "The weather has changed.";
+                        changeWeather = command.getTimestamp() + 2;
+                    } else {
+                        msg = "ERROR: The weather change does not affect the environment. Cannot perform action";
+                        break;
+                    }
+                }
+            }
+        }
+        if (msg.isEmpty()) {
+            msg = "ERROR: The weather change does not affect the environment. Cannot perform action";
+        }
+
+        ObjectNode node = mapper.createObjectNode();
+        node.put("command", command.getCommand());
+        node.put("message", msg);
+        node.put("timestamp", command.getTimestamp());
+
+        output.add(node);
+    }
+
+    private boolean changeWeatherHelper(final CommandInput command, final Air air) {
+        String event = command.getType();
+        String expectedAir = switch (event) {
+            case "rainfall" -> "TropicalAir";
+            case "windfall" -> "PolarAir";
+            case "newSeason" -> "TemperateAir";
+            case "desertStorm" -> "DesertAir";
+            case "peopleHiking" -> "MountainAir";
+            default -> "Unknown";
+        };
+
+        return air.getType().equals(expectedAir);
     }
 
     /**
@@ -286,6 +399,15 @@ public class Simulation {
     public void rechargeBattery(final CommandInput command,
                                 final ArrayNode output,
                                 final ObjectMapper mapper) {
+        charging = command.getTimestamp() + command.getTimeToCharge();
+        terraBot.setEnergyPoints(terraBot.getEnergyPoints() + command.getTimeToCharge());
+
+        ObjectNode node = mapper.createObjectNode();
+        node.put("command", command.getCommand());
+        node.put("message", "Robot battery is charging.");
+        node.put("timestamp", command.getTimestamp());
+
+        output.add(node);
     }
 
     /**

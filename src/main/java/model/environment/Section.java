@@ -1,7 +1,11 @@
 package model.environment;
 
 import lombok.Data;
-import model.entities.*;
+import model.entities.Air;
+import model.entities.Animal;
+import model.entities.Plant;
+import model.entities.Soil;
+import model.entities.Water;
 
 /**
  * Represents a single cell of the territory

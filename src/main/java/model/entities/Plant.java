@@ -16,6 +16,7 @@ public class Plant implements EnvironmentEntity {
 
     private double growth = 0;
     private double ageSurplus = 0.2;
+    private boolean isActive = false;
 
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {
@@ -32,7 +33,7 @@ public class Plant implements EnvironmentEntity {
     public double giveRobotDamage() {
         int possibilityStuck = switch (type) {
             case "FloweringPlants" -> 90;
-            case "Gymnosperms" -> 60;
+            case "GymnospermsPlants" -> 60;
             case "Ferns" -> 30;
             case "Mosses" -> 40;
             case "Algae" -> 20;
@@ -44,11 +45,24 @@ public class Plant implements EnvironmentEntity {
     public double oxygenProduced() {
         return switch (type) {
             case "FloweringPlants" -> 6 + ageSurplus;
-            case "Gymnosperms" -> ageSurplus;
+            case "GymnospermsPlants" -> ageSurplus;
             case "Ferns" -> ageSurplus;
             case "Mosses" -> 0.8 + ageSurplus;
             case "Algae" -> 0.5 + ageSurplus;
             default -> 0;
         };
+    }
+
+    public void increaseGrowth() {
+        growth += 0.2;
+        if (growth == 1) {
+            if (ageSurplus == 0.2) {
+                ageSurplus = 0.7; // mature
+            } else if (ageSurplus == 0.7) {
+                ageSurplus = 0.4; // old
+            } else if (ageSurplus == 0.4) {
+                ageSurplus = 0;
+            }
+        }
     }
 }

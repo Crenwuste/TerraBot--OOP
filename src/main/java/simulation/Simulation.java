@@ -12,6 +12,7 @@ import model.entities.Plant;
 import model.entities.Soil;
 import model.environment.Section;
 import model.environment.Territory;
+import model.robot.Direction;
 import model.robot.TerraBot;
 
 /**
@@ -65,8 +66,10 @@ public class Simulation {
                                final ObjectMapper mapper) {
         Section[][] section = territory.getSections();
 
+        updateActiveEntities(section, command.getTimestamp());
+
         for (int i = 0; i < territory.getHeight(); i++) {
-            for (int j = 0; j < territory.getHeight(); j++) {
+            for (int j = 0; j < territory.getWidth(); j++) {
                 Soil soil = section[i][j].getSoil();
                 Air air = section[i][j].getAir();
                 Animal animal = section[i][j].getAnimal();
@@ -96,27 +99,27 @@ public class Simulation {
             case "startSimulation" ->
                     startSimulation(command, output, mapper);
             case "endSimulation" ->
-                endSimulation(command, output, mapper);
+                    endSimulation(command, output, mapper);
             case "printEnvConditions"  ->
-                printEnvConditions(command, output, mapper);
+                    printEnvConditions(command, output, mapper);
             case "printMap"  ->
-                printMap(command, output, mapper);
+                    printMap(command, output, mapper);
             case "moveRobot" ->
-                moveRobot(command, output, mapper);
+                    moveRobot(command, output, mapper);
             case "scanObject"  ->
-                scanObject(command, output, mapper);
+                    scanObject(command, output, mapper);
             case "learnFact"  ->
-                learnFact(command, output, mapper);
+                    learnFact(command, output, mapper);
             case "improveEnvironment"   ->
-                improveEnvironment(command, output, mapper);
+                    improveEnvironment(command, output, mapper);
             case "changeWeatherConditions"   ->
-                changeWeatherConditions(command, output, mapper);
+                    changeWeatherConditions(command, output, mapper);
             case "rechargeBattery"   ->
-                rechargeBattery(command, output, mapper);
+                    rechargeBattery(command, output, mapper);
             case "getEnergyStatus" ->
-                getEnergyStatus(command, output, mapper);
+                    getEnergyStatus(command, output, mapper);
             case "printKnowledgeBase"   ->
-                printKnowledgeBase(command, output, mapper);
+                    printKnowledgeBase(command, output, mapper);
             default ->  throw new IllegalArgumentException("Invalid command");
         }
     }
@@ -158,20 +161,21 @@ public class Simulation {
         Section[][] section = territory.getSections();
         int x = terraBot.getPosition().getX();
         int y = terraBot.getPosition().getY();
+        Section currentSection = section[x][y];
 
         ObjectNode entities = mapper.createObjectNode();
 
-        entities.set("soil", section[x][y].getSoil().getEntities(mapper));
-        if (section[x][y].getPlant() != null) {
-            entities.set("plants", section[x][y].getPlant().getEntities(mapper));
+        entities.set("soil", currentSection.getSoil().getEntities(mapper));
+        if (currentSection.getPlant() != null) {
+            entities.set("plants", currentSection.getPlant().getEntities(mapper));
         }
-        if (section[x][y].getAnimal() != null) {
-            entities.set("animals", section[x][y].getAnimal().getEntities(mapper));
+        if (currentSection.getAnimal() != null) {
+            entities.set("animals", currentSection.getAnimal().getEntities(mapper));
         }
-        if (section[x][y].getWater() != null) {
-            entities.set("water", section[x][y].getWater().getEntities(mapper));
+        if (currentSection.getWater() != null) {
+            entities.set("water", currentSection.getWater().getEntities(mapper));
         }
-        entities.set("air", section[x][y].getAir().getEntities(mapper));
+        entities.set("air", currentSection.getAir().getEntities(mapper));
 
         ObjectNode node = mapper.createObjectNode();
         node.put("command", command.getCommand());
@@ -201,19 +205,20 @@ public class Simulation {
                 sectionNode.set("section", sectionCoords);
 
                 Section[][] section = territory.getSections();
+                Section currentSection = section[j][i];
 
-                if (section[j][i].getPlant() != null) {
+                if (currentSection.getPlant() != null) {
                     objCount++;
                 }
-                if (section[j][i].getAnimal() != null) {
+                if (currentSection.getAnimal() != null) {
                     objCount++;
                 }
-                if (section[j][i].getWater() != null) {
+                if (currentSection.getWater() != null) {
                     objCount++;
                 }
 
-                Soil soil = section[j][i].getSoil();
-                Air air = section[j][i].getAir();
+                Soil soil = currentSection.getSoil();
+                Air air = currentSection.getAir();
 
                 sectionNode.put("totalNrOfObjects", objCount);
                 sectionNode.put("airQuality", air.airQualityMessage());
@@ -240,36 +245,29 @@ public class Simulation {
         int x = terraBot.getPosition().getX();
         int y = terraBot.getPosition().getY();
 
-        int up = moveRobotHelper(x, y + 1);
-        int right = moveRobotHelper(x + 1, y);
-        int down = moveRobotHelper(x, y - 1);
-        int left = moveRobotHelper(x - 1, y);
+        // Calculate costs for all directions
+        Direction bestDirection = null;
+        int minCost = Integer.MAX_VALUE;
 
-        int min = up;
-        int xNew = x, yNew = y + 1;
-        if (right < min) {
-            min = right;
-            xNew = x + 1;
-            yNew = y;
-        }
-        if (down < min) {
-            min = down;
-            xNew = x;
-            yNew = y - 1;
-        }
-        if (left < min) {
-            min = left;
-            xNew = x - 1;
-            yNew = y;
+        for (Direction dir : Direction.values()) {
+            int newX = dir.getNewX(x);
+            int newY = dir.getNewY(y);
+            int cost = moveRobotHelper(newX, newY);
+
+            if (cost < minCost) {
+                minCost = cost;
+                bestDirection = dir;
+            }
         }
 
         String msg;
-        if (min <= terraBot.getEnergyPoints()) {
+        if (minCost <= terraBot.getEnergyPoints()) {
+            int xNew = bestDirection.getNewX(x);
+            int yNew = bestDirection.getNewY(y);
             terraBot.getPosition().setX(xNew);
             terraBot.getPosition().setY(yNew);
-            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - min);
+            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - minCost);
             msg = "The robot has successfully moved to position (" + xNew + ", " + yNew + ").";
-
         } else {
             msg = "ERROR: Not enough battery left. Cannot perform action";
         }
@@ -284,24 +282,25 @@ public class Simulation {
 
     private int moveRobotHelper(final int x, final int y) {
         if (x < 0 || y < 0 || x >= territory.getWidth() || y >= territory.getHeight()) {
-            return 999;
+            return Integer.MAX_VALUE;
         }
 
         Section[][] section = territory.getSections();
+        Section currentSection = section[x][y];
 
-        double soil = section[x][y].getSoil().giveRobotDamage();
-        double air = section[x][y].getAir().giveRobotDamage();
+        double soil = currentSection.getSoil().giveRobotDamage();
+        double air = currentSection.getAir().giveRobotDamage();
 
         int count = 2;
 
         double animal = 0;
-        if (section[x][y].getAnimal() != null) {
-            animal = section[x][y].getAnimal().giveRobotDamage();
+        if (currentSection.getAnimal() != null) {
+            animal = currentSection.getAnimal().giveRobotDamage();
             count++;
         }
         double plant = 0;
-        if (section[x][y].getPlant() != null) {
-            plant = section[x][y].getPlant().giveRobotDamage();
+        if (currentSection.getPlant() != null) {
+            plant = currentSection.getPlant().giveRobotDamage();
             count++;
         }
 
@@ -316,18 +315,235 @@ public class Simulation {
     public void scanObject(final CommandInput command,
                            final ArrayNode output,
                            final ObjectMapper mapper) {
+        ObjectNode node = mapper.createObjectNode();
         String msg = "";
 
-        if (7 <= terraBot.getEnergyPoints()) {
+        if (7 > terraBot.getEnergyPoints()) {
+            node.put("command", command.getCommand());
+            node.put("message", "ERROR: Not enough battery left. Cannot perform action");
+            node.put("timestamp", command.getTimestamp());
+            output.add(node);
+            return;
+        }
+
+        int x = terraBot.getPosition().getX();
+        int y = terraBot.getPosition().getY();
+        Section[][] sections = territory.getSections();
+        Section currentSection = sections[x][y];
+        boolean success = true;
+
+        // Check what object is at current position and activate it
+        if (currentSection.getWater() != null && command.getSound().equals("none") && command.getColor().equals("none") && command.getSmell().equals("none")) {
+            // Scan water - activate it
+            Water water = currentSection.getWater();
+            water.setActive(true);
+            water.setLastIterTimestamp(command.getTimestamp());
+            msg = "The scanned object is water.";
+        } else if (currentSection.getPlant() != null && command.getSound().equals("none") &&  !command.getColor().equals("none")) {
+            // Scan plant - activate it
+            Plant plant = currentSection.getPlant();
+            plant.setActive(true);
+            msg = "The scanned object is a plant.";
+        } else if (currentSection.getAnimal() != null) {
+            // Scan animal - activate it
+            Animal animal = currentSection.getAnimal();
+            animal.setActive(true);
+            animal.setLastMoveTimestamp(command.getTimestamp());
+            msg = "The scanned object is an animal.";
+        } else {
+            msg = "ERROR: Object not found. Cannot perform action";
+            success = false;
+        }
+
+        if (success) {
             terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 7);
         }
 
-        ObjectNode node = mapper.createObjectNode();
         node.put("command", command.getCommand());
         node.put("message", msg);
         node.put("timestamp", command.getTimestamp());
 
         output.add(node);
+    }
+
+    /**
+     * Updates all active entities at each iteration.
+     *
+     * @param sections the territory sections
+     * @param currentTimestamp the current timestamp (iteration number)
+     */
+    private void updateActiveEntities(final Section[][] sections, final int currentTimestamp) {
+        for (int i = 0; i < territory.getHeight(); i++) {
+            for (int j = 0; j < territory.getWidth(); j++) {
+                Section currentSection = sections[i][j];
+
+                Air air = currentSection.getAir();
+                Soil soil = currentSection.getSoil();
+                Plant plant = currentSection.getPlant();
+
+                // Update active water
+                Water water = currentSection.getWater();
+                if (water != null && water.isActive()) {
+                    // Update waterRetention and humidity after 2 iterations
+                    while (currentTimestamp - water.getLastIterTimestamp() >= 2) {
+                        air.setHumidity(air.getHumidity() + 0.1);
+                        soil.setWaterRetention(soil.getWaterRetention() + 0.1);
+                        water.setLastIterTimestamp(water.getLastIterTimestamp() + 2);
+                    }
+                    if (plant != null && plant.isActive()) {
+                        plant.increaseGrowth();
+                        if (plant.getAgeSurplus() == 0) {
+                            currentSection.setPlant(null);
+                        }
+                    }
+                }
+
+                // Update active plants
+                if (plant != null && plant.isActive()) {
+                    plant.increaseGrowth();
+                    if (plant.getAgeSurplus() == 0) {
+                        currentSection.setPlant(null);
+                    }
+
+                    // Update air
+                    double oxygenProduced = plant.oxygenProduced();
+                    air.setOxygenLevel(air.getOxygenLevel() + oxygenProduced);
+                }
+
+                // Update active animals
+                Animal animal = currentSection.getAnimal();
+                if (animal != null && animal.isActive()) {
+                    // Animal moves every 2 iterations (timestamps)
+                    // Check if at least 2 timestamps have passed since last move
+                    while (currentTimestamp - animal.getLastMoveTimestamp() >= 2) {
+                        moveAnimal(animal, i, j, sections);
+                        animal.setLastMoveTimestamp(animal.getLastMoveTimestamp() + 2);
+                    }
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Moves an animal to a neighboring section based on the feeding algorithm.
+     *
+     * @param animal the animal to move
+     * @param currentX current x coordinate
+     * @param currentY current y coordinate
+     * @param sections the territory sections
+     */
+    private void moveAnimal(final Animal animal, final int currentX, final int currentY,
+                            final Section[][] sections) {
+        // Priority 1: Section with both plant AND water
+        Section bestSectionWithBoth = null;
+        double bestWaterQuality = -1;
+
+        // Priority 2: Sections with plant OR water
+        Section firstSectionWithPlant = null;
+
+        Section bestSectionWithWater = null;
+        double bestWaterQualityAlone = -1;
+
+        // Priority 3: First available section
+        Section firstAvailableSection = null;
+
+        for (Direction dir : Direction.values()) {
+            int newX = dir.getNewX(currentX);
+            int newY = dir.getNewY(currentY);
+
+            // Check bounds
+            if (newX < 0 || newY < 0 || newX >= territory.getWidth()
+                    || newY >= territory.getHeight()) {
+                continue;
+            }
+
+            Section neighborSection = sections[newY][newX];
+
+            Plant neighborPlant = neighborSection.getPlant();
+            Water neighborWater = neighborSection.getWater();
+            boolean hasPlant = neighborPlant != null && neighborPlant.isActive();
+            boolean hasWater = neighborWater != null && neighborWater.isActive();
+
+            // Priority 1: Both plant and water
+            if (hasPlant && hasWater) {
+                double waterQuality = neighborWater.waterQuality();
+                if (waterQuality > bestWaterQuality) {
+                    bestWaterQuality = waterQuality;
+                    bestSectionWithBoth = neighborSection;
+                }
+            }
+
+            // Priority 2: Plant or water
+            if (hasPlant && firstSectionWithPlant == null) {
+                firstSectionWithPlant = neighborSection;
+            }
+
+            if (hasWater) {
+                double waterQuality = neighborWater.waterQuality();
+                if (waterQuality > bestWaterQualityAlone) {
+                    bestWaterQualityAlone = waterQuality;
+                    bestSectionWithWater = neighborSection;
+                }
+            }
+
+            // Priority 3: First available
+            if (firstAvailableSection == null) {
+                firstAvailableSection = neighborSection;
+            }
+        }
+
+        // Choose destination based on priority
+        Section targetSection = firstAvailableSection;
+
+        if (bestSectionWithBoth != null) {
+            // Priority 1: Section with both plant and water
+            targetSection = bestSectionWithBoth;
+            sectionWithPlant(targetSection, animal);
+            sectionWithWater(targetSection, animal);
+        } else if (firstSectionWithPlant != null) {
+            // Priority 2a: First section with plant
+            targetSection = firstSectionWithPlant;
+            sectionWithPlant(targetSection, animal);
+        } else if (bestSectionWithWater != null) {
+            // Priority 2b: Best section with water
+            targetSection = bestSectionWithWater;
+            sectionWithWater(targetSection, animal);
+        }
+
+        if (animal.getType().equals("Carnivore") || animal.getType().equals("Parasite")) {
+            if (targetSection.getAnimal() != null) {
+                animal.setMass(animal.getMass() + targetSection.getAnimal().getMass());
+                targetSection.setAnimal(null);
+            }
+        }
+
+        // Move animal to new section
+        sections[currentY][currentX].setAnimal(null);
+        targetSection.setAnimal(animal);
+    }
+
+    private void sectionWithPlant(final Section sectionWithPlant, final Animal animal) {
+        Plant plant = sectionWithPlant.getPlant();
+
+        animal.setMass(animal.getMass() + plant.getMass());
+        sectionWithPlant.setPlant(null);
+    }
+
+    private void sectionWithWater(final Section sectionWithWater, final Animal animal) {
+        Water water = sectionWithWater.getWater();
+
+        double intakeRate = 0.08;
+        double waterToDrink = Math.min(animal.getMass() * intakeRate, water.getMass());
+
+        if (waterToDrink > water.getMass()) {
+            waterToDrink = water.getMass();
+        }
+        animal.setMass(animal.getMass() + waterToDrink);
+        water.setMass(water.getMass() - waterToDrink);
+        if (water.getMass() == 0) {
+            sectionWithWater.setWater(null);
+        }
     }
 
     /**

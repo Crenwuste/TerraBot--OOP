@@ -11,10 +11,11 @@ import lombok.Data;
 public class Animal implements EnvironmentEntity {
 
     private String type;
-
     private String name;
-
     private double mass;
+
+    private boolean isActive = false;
+    private int lastMoveTimestamp = 0;
 
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {

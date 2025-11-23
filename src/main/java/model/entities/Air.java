@@ -1,7 +1,6 @@
 package model.entities;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fileio.CommandInput;
 import lombok.Data;
@@ -24,6 +23,7 @@ public class Air implements EnvironmentEntity {
     private double iceCrystalConcentration;
     private double dustParticles;
 
+    private boolean desertStorm = false;
     private double airQuality = 0;
     private double changedAirQuality;
 
@@ -63,15 +63,15 @@ public class Air implements EnvironmentEntity {
         entities.put("type", type);
         entities.put("name", name);
         entities.put("mass", mass);
-        entities.put("humidity", humidity);
+        entities.put("humidity", clampAndRound(humidity));
         entities.put("temperature", temperature);
         entities.put("oxygenLevel", oxygenLevel);
         entities.put("airQuality", airQuality);
         switch (type) {
-            case "TropicalAir" -> entities.put("co2Level", co2Level);
+            case "TropicalAir" -> entities.put("co2Level", clampAndRound(co2Level));
             case "PolarAir" ->entities.put("iceCrystalConcentration", iceCrystalConcentration);
             case "TemperateAir" -> entities.put("pollenLevel", pollenLevel);
-            case "DesertAir" -> entities.put("dustParticles", dustParticles);
+            case "DesertAir" -> entities.put("desertStorm", desertStorm);
             case "MountainAir" -> entities.put("altitude", altitude);
             default -> { }
         }
@@ -111,7 +111,10 @@ public class Air implements EnvironmentEntity {
             case "polarStorm" -> airQuality - (cmd.getWindSpeed() * 0.2);
             case "newSeason" ->
                     airQuality - (cmd.getSeason().equalsIgnoreCase("Spring") ? 15 : 0);
-            case "desertStorm" -> airQuality - (cmd.isDesertStorm() ? 30 : 0);
+            case "desertStorm" -> {
+                desertStorm = cmd.isDesertStorm();
+                yield  airQuality - (desertStorm ? 30 : 0);
+            }
             case "peopleHiking" -> airQuality - (cmd.getNumberOfHikers() * 0.1);
             default -> airQuality;
         };

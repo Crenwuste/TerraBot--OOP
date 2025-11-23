@@ -62,7 +62,7 @@ public class Soil implements EnvironmentEntity {
         entities.put("name", name);
         entities.put("mass", mass);
         entities.put("nitrogen", nitrogen);
-        entities.put("waterRetention", waterRetention);
+        entities.put("waterRetention", clampAndRound(waterRetention));
         entities.put("soilpH", soilpH);
         entities.put("organicMatter", organicMatter);
         entities.put("soilQuality", soilQuality);

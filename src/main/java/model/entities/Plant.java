@@ -63,6 +63,7 @@ public class Plant implements EnvironmentEntity {
             } else if (ageSurplus == 0.4) {
                 ageSurplus = 0;
             }
+            growth = 0;
         }
     }
 }

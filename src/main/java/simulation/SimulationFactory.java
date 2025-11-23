@@ -66,22 +66,21 @@ public class SimulationFactory {
             return;
         }
         for (SoilInput soilInput : soils) {
-            Soil soil = new Soil();
-            soil.setType(soilInput.getType());
-            soil.setName(soilInput.getName());
-            soil.setMass(soilInput.getMass());
-            soil.setNitrogen(soilInput.getNitrogen());
-            soil.setWaterRetention(soilInput.getWaterRetention());
-            soil.setSoilpH(soilInput.getSoilpH());
-            soil.setOrganicMatter(soilInput.getOrganicMatter());
-            soil.setLeafLitter(soilInput.getLeafLitter());
-            soil.setWaterLogging(soilInput.getWaterLogging());
-            soil.setPermafrostDepth(soilInput.getPermafrostDepth());
-            soil.setRootDensity(soilInput.getRootDensity());
-            soil.setSalinity(soilInput.getSalinity());
-
             for (PairInput sectionPos : soilInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
+                Soil soil = new Soil();
+                soil.setType(soilInput.getType());
+                soil.setName(soilInput.getName());
+                soil.setMass(soilInput.getMass());
+                soil.setNitrogen(soilInput.getNitrogen());
+                soil.setWaterRetention(soilInput.getWaterRetention());
+                soil.setSoilpH(soilInput.getSoilpH());
+                soil.setOrganicMatter(soilInput.getOrganicMatter());
+                soil.setLeafLitter(soilInput.getLeafLitter());
+                soil.setWaterLogging(soilInput.getWaterLogging());
+                soil.setPermafrostDepth(soilInput.getPermafrostDepth());
+                soil.setRootDensity(soilInput.getRootDensity());
+                soil.setSalinity(soilInput.getSalinity());
                 section.setSoil(soil);
             }
         }
@@ -93,13 +92,12 @@ public class SimulationFactory {
             return;
         }
         for (PlantInput plantInput : plants) {
-            Plant plant = new Plant();
-            plant.setType(plantInput.getType());
-            plant.setName(plantInput.getName());
-            plant.setMass(plantInput.getMass());
-
             for (PairInput sectionPos : plantInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
+                Plant plant = new Plant();
+                plant.setType(plantInput.getType());
+                plant.setName(plantInput.getName());
+                plant.setMass(plantInput.getMass());
                 section.setPlant(plant);
             }
         }
@@ -111,13 +109,12 @@ public class SimulationFactory {
             return;
         }
         for (AnimalInput animalInput : animals) {
-            Animal animal = new Animal();
-            animal.setType(animalInput.getType());
-            animal.setName(animalInput.getName());
-            animal.setMass(animalInput.getMass());
-
             for (PairInput sectionPos : animalInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
+                Animal animal = new Animal();
+                animal.setType(animalInput.getType());
+                animal.setName(animalInput.getName());
+                animal.setMass(animalInput.getMass());
                 section.setAnimal(animal);
             }
         }
@@ -129,19 +126,18 @@ public class SimulationFactory {
             return;
         }
         for (WaterInput waterInput : waters) {
-            Water water = new Water();
-            water.setType(waterInput.getType());
-            water.setName(waterInput.getName());
-            water.setMass(waterInput.getMass());
-            water.setPurity(waterInput.getPurity());
-            water.setSalinity(waterInput.getSalinity());
-            water.setTurbidity(waterInput.getTurbidity());
-            water.setContaminantIndex(waterInput.getContaminantIndex());
-            water.setPH(waterInput.getPH());
-            water.setFrozen(waterInput.isFrozen());
-
             for (PairInput sectionPos : waterInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
+                Water water = new Water();
+                water.setType(waterInput.getType());
+                water.setName(waterInput.getName());
+                water.setMass(waterInput.getMass());
+                water.setPurity(waterInput.getPurity());
+                water.setSalinity(waterInput.getSalinity());
+                water.setTurbidity(waterInput.getTurbidity());
+                water.setContaminantIndex(waterInput.getContaminantIndex());
+                water.setPH(waterInput.getPH());
+                water.setFrozen(waterInput.isFrozen());
                 section.setWater(water);
             }
         }
@@ -153,21 +149,20 @@ public class SimulationFactory {
             return;
         }
         for (AirInput airInput : airs) {
-            Air air = new Air();
-            air.setType(airInput.getType());
-            air.setName(airInput.getName());
-            air.setMass(airInput.getMass());
-            air.setHumidity(airInput.getHumidity());
-            air.setTemperature(airInput.getTemperature());
-            air.setOxygenLevel(airInput.getOxygenLevel());
-            air.setAltitude(airInput.getAltitude());
-            air.setPollenLevel(airInput.getPollenLevel());
-            air.setCo2Level(airInput.getCo2Level());
-            air.setIceCrystalConcentration(airInput.getIceCrystalConcentration());
-            air.setDustParticles(airInput.getDustParticles());
-
             for (PairInput sectionPos : airInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
+                Air air = new Air();
+                air.setType(airInput.getType());
+                air.setName(airInput.getName());
+                air.setMass(airInput.getMass());
+                air.setHumidity(airInput.getHumidity());
+                air.setTemperature(airInput.getTemperature());
+                air.setOxygenLevel(airInput.getOxygenLevel());
+                air.setAltitude(airInput.getAltitude());
+                air.setPollenLevel(airInput.getPollenLevel());
+                air.setCo2Level(airInput.getCo2Level());
+                air.setIceCrystalConcentration(airInput.getIceCrystalConcentration());
+                air.setDustParticles(airInput.getDustParticles());
                 section.setAir(air);
             }
         }

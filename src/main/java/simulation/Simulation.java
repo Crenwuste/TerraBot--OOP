@@ -83,8 +83,6 @@ public class Simulation {
             }
         }
 
-
-        String name = command.getCommand();
         if (charging > command.getTimestamp()) {
             ObjectNode node = mapper.createObjectNode();
             node.put("command", command.getCommand());
@@ -95,6 +93,7 @@ public class Simulation {
             return;
         }
 
+        String name = command.getCommand();
         switch (name) {
             case "startSimulation" ->
                     startSimulation(command, output, mapper);
@@ -458,7 +457,7 @@ public class Simulation {
                 continue;
             }
 
-            Section neighborSection = sections[newY][newX];
+            Section neighborSection = sections[newX][newY];
 
             Plant neighborPlant = neighborSection.getPlant();
             Water neighborWater = neighborSection.getWater();
@@ -519,7 +518,7 @@ public class Simulation {
         }
 
         // Move animal to new section
-        sections[currentY][currentX].setAnimal(null);
+        sections[currentX][currentY].setAnimal(null);
         targetSection.setAnimal(animal);
     }
 

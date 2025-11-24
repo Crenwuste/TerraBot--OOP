@@ -21,7 +21,7 @@ public class Water implements EnvironmentEntity {
     private boolean frozen;
 
     private boolean isActive = false;
-    private int lastIterTimestamp = 0;
+    private int lastIterTimestamp;
 
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {

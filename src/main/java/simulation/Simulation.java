@@ -12,8 +12,12 @@ import model.entities.Plant;
 import model.entities.Soil;
 import model.environment.Section;
 import model.environment.Territory;
+import model.position.Position;
 import model.robot.Direction;
+import model.robot.KnowledgeBase;
 import model.robot.TerraBot;
+
+import java.util.ArrayList;
 
 /**
  * Represents a single simulation run for TerraBot
@@ -30,11 +34,6 @@ public class Simulation {
      * The TerraBot instance controlled during the simulation
      */
     private final TerraBot terraBot;
-
-    /**
-     * Flag indicating whether the simulation is currently running
-     */
-    private boolean running;
 
     /**
      * Indicating the timestamp at witch the charging ends
@@ -315,7 +314,7 @@ public class Simulation {
                            final ArrayNode output,
                            final ObjectMapper mapper) {
         ObjectNode node = mapper.createObjectNode();
-        String msg = "";
+        String msg;
 
         if (7 > terraBot.getEnergyPoints()) {
             node.put("command", command.getCommand());
@@ -332,22 +331,28 @@ public class Simulation {
         boolean success = true;
 
         // Check what object is at current position and activate it
-        if (currentSection.getWater() != null && command.getSound().equals("none") && command.getColor().equals("none") && command.getSmell().equals("none")) {
+        if (currentSection.getWater() != null && command.getSound().equals("none")
+                && command.getColor().equals("none") && command.getSmell().equals("none")) {
             // Scan water - activate it
             Water water = currentSection.getWater();
             water.setActive(true);
             water.setLastIterTimestamp(command.getTimestamp());
+            terraBot.addScannedObject(water.getName());
             msg = "The scanned object is water.";
-        } else if (currentSection.getPlant() != null && command.getSound().equals("none") &&  !command.getColor().equals("none")) {
+        } else if (currentSection.getPlant() != null && command.getSound().equals("none")
+                && !command.getColor().equals("none")) {
             // Scan plant - activate it
             Plant plant = currentSection.getPlant();
             plant.setActive(true);
+            plant.setLastIteration(command.getTimestamp());
+            terraBot.addScannedObject(plant.getName());
             msg = "The scanned object is a plant.";
-        } else if (currentSection.getAnimal() != null) {
+        } else if (currentSection.getAnimal() != null && !command.getSound().equals("none")) {
             // Scan animal - activate it
             Animal animal = currentSection.getAnimal();
             animal.setActive(true);
             animal.setLastMoveTimestamp(command.getTimestamp());
+            terraBot.addScannedObject(animal.getName());
             msg = "The scanned object is an animal.";
         } else {
             msg = "ERROR: Object not found. Cannot perform action";
@@ -355,7 +360,8 @@ public class Simulation {
         }
 
         if (success) {
-            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 7);
+            int energyUsed = 7;
+            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - energyUsed);
         }
 
         node.put("command", command.getCommand());
@@ -389,24 +395,25 @@ public class Simulation {
                         soil.setWaterRetention(soil.getWaterRetention() + 0.1);
                         water.setLastIterTimestamp(water.getLastIterTimestamp() + 2);
                     }
-                    if (plant != null && plant.isActive()) {
-                        plant.increaseGrowth();
-                        if (plant.getAgeSurplus() == 0) {
-                            currentSection.setPlant(null);
-                        }
-                    }
                 }
 
                 // Update active plants
                 if (plant != null && plant.isActive()) {
-                    plant.increaseGrowth();
-                    if (plant.getAgeSurplus() == 0) {
-                        currentSection.setPlant(null);
-                    }
+                    while (currentTimestamp - plant.getLastIteration() != 0) {
+                        plant.increaseGrowth();
+                        if (water != null && water.isActive()) {
+                            plant.increaseGrowth();
+                        }
+                        if (plant.getAgeSurplus() == 0) {
+                            currentSection.setPlant(null);
+                        } else {
+                            // Update air
+                            double oxygenProduced = plant.oxygenProduced();
+                            air.setOxygenLevel(air.getOxygenLevel() + oxygenProduced);
+                        }
 
-                    // Update air
-                    double oxygenProduced = plant.oxygenProduced();
-                    air.setOxygenLevel(air.getOxygenLevel() + oxygenProduced);
+                        plant.setLastIteration(plant.getLastIteration() + 1);
+                    }
                 }
 
                 // Update active animals
@@ -498,23 +505,12 @@ public class Simulation {
         if (bestSectionWithBoth != null) {
             // Priority 1: Section with both plant and water
             targetSection = bestSectionWithBoth;
-            sectionWithPlant(targetSection, animal);
-            sectionWithWater(targetSection, animal);
         } else if (firstSectionWithPlant != null) {
             // Priority 2a: First section with plant
             targetSection = firstSectionWithPlant;
-            sectionWithPlant(targetSection, animal);
         } else if (bestSectionWithWater != null) {
             // Priority 2b: Best section with water
             targetSection = bestSectionWithWater;
-            sectionWithWater(targetSection, animal);
-        }
-
-        if (animal.getType().equals("Carnivore") || animal.getType().equals("Parasite")) {
-            if (targetSection.getAnimal() != null) {
-                animal.setMass(animal.getMass() + targetSection.getAnimal().getMass());
-                targetSection.setAnimal(null);
-            }
         }
 
         // Move animal to new section
@@ -551,6 +547,73 @@ public class Simulation {
     public void learnFact(final CommandInput command,
                           final ArrayNode output,
                           final ObjectMapper mapper) {
+        ObjectNode node = mapper.createObjectNode();
+        String msg;
+
+        if (2 > terraBot.getEnergyPoints()) {
+            node.put("command", command.getCommand());
+            node.put("message", "ERROR: Not enough battery left. Cannot perform action");
+            node.put("timestamp", command.getTimestamp());
+            output.add(node);
+            return;
+        }
+
+        if (terraBot.getScannedObjects().contains(command.getComponents())) {
+            terraBot.getKnowledgeBase().addFact(command.getComponents(), command.getSubject());
+            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 2);
+            msg = "The fact has been successfully saved in the database.";
+        } else {
+            msg = "ERROR: Subject not yet saved. Cannot perform action";
+        }
+
+        node.put("command", command.getCommand());
+        node.put("message", msg);
+        node.put("timestamp", command.getTimestamp());
+
+        output.add(node);
+    }
+
+
+    private boolean hasImprovementFact(final String componentName,
+                                       final String improvementType) {
+        ArrayList<String> facts = terraBot.getKnowledgeBase().getFacts(componentName);
+        if (facts.isEmpty()) {
+            return false;
+        }
+
+        String required = improvementType.toLowerCase();
+
+        for (String fact : facts) {
+            String normalized = fact.toLowerCase();
+            switch (required) {
+                case "plantvegetation" -> {
+                    if (normalized.equals("method to plantvegetation")
+                            || normalized.equals("method to plant " + componentName)
+                            || normalized.startsWith("method to plant ")) {
+                        return true;
+                    }
+                }
+                case "fertilizesoil" -> {
+                    if (normalized.contains("method to fertilize with " + componentName)) {
+                        return true;
+                    }
+                }
+                case "increasehumidity" -> {
+                    if (normalized.contains("method to increase humidity")) {
+                        return true;
+                    }
+                }
+                case "increasemoisture" -> {
+                    if (normalized.contains("method to increase moisture")) {
+                        return true;
+                    }
+                }
+                default -> {
+                    return false;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -559,6 +622,72 @@ public class Simulation {
     public void improveEnvironment(final CommandInput command,
                                    final ArrayNode output,
                                    final ObjectMapper mapper) {
+        ObjectNode node = mapper.createObjectNode();
+        node.put("command", command.getCommand());
+        node.put("timestamp", command.getTimestamp());
+        String msg;
+
+        if (10 > terraBot.getEnergyPoints()) {
+            node.put("command", command.getCommand());
+            node.put("message", "ERROR: Not enough battery left. Cannot perform action");
+            node.put("timestamp", command.getTimestamp());
+            output.add(node);
+            return;
+        }
+
+        String improvementType = command.getImprovementType();
+        String componentName = command.getName();
+
+        if (!hasImprovementFact(componentName, improvementType)) {
+            msg = "ERROR: Subject not yet saved. Cannot perform action";
+            node.put("message", msg);
+            output.add(node);
+            return;
+        }
+
+        if (!terraBot.getScannedObjects().contains(componentName)) {
+            msg = "ERROR: Fact not yet saved. Cannot perform action";//"ERROR: Fact not yet saved. Cannot perform action"
+            node.put("message", msg);
+            output.add(node);
+            return;
+        }
+
+        Section[][] sections = territory.getSections();
+        Position pos = terraBot.getPosition();
+        Section currentSection = sections[pos.getX()][pos.getY()];
+        Air air = currentSection.getAir();
+        Soil soil = currentSection.getSoil();
+
+        switch (improvementType) {
+            case "plantVegetation" -> {
+                air.setOxygenLevel(air.getOxygenLevel() + 0.3);
+                msg = "The " + componentName + " was planted successfully.";
+            }
+            case "fertilizeSoil" -> {
+                soil.setOrganicMatter(soil.getOrganicMatter() + 0.3);
+                msg = "The soil was successfully fertilized using " + componentName;
+            }
+            case "increaseHumidity" -> {
+                air.setHumidity(air.getHumidity() + 0.2);
+                msg = "The humidity was successfully increased using " + componentName;
+            }
+            case "increaseMoisture" -> {
+                soil.setWaterRetention(soil.getWaterRetention() + 0.2);
+                msg = "The moisture was successfully increased using " + componentName;
+            }
+            default -> {
+                msg = "ERROR: Improvement not supported. Cannot perform action";
+                node.put("message", msg);
+                output.add(node);
+                return;
+            }
+        }
+
+        terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 10);
+
+        node.put("message", msg);
+
+        output.add(node);
     }
 
     /**
@@ -645,6 +774,29 @@ public class Simulation {
     public void printKnowledgeBase(final CommandInput command,
                                    final ArrayNode output,
                                    final ObjectMapper mapper) {
+        KnowledgeBase kb = terraBot.getKnowledgeBase();
+        ArrayNode outputArray = mapper.createArrayNode();
+
+        ArrayList<String> allTopics = kb.getAllTopics();
+        for (String topic : allTopics) {
+            ObjectNode topicNode = mapper.createObjectNode();
+            topicNode.put("topic", topic);
+
+            ArrayNode factsArray = mapper.createArrayNode();
+            ArrayList<String> facts = kb.getFacts(topic);
+            for (String fact : facts) {
+                factsArray.add(fact);
+            }
+            topicNode.set("facts", factsArray);
+            outputArray.add(topicNode);
+        }
+
+        ObjectNode node = mapper.createObjectNode();
+        node.put("command", command.getCommand());
+        node.set("output", outputArray);
+        node.put("timestamp", command.getTimestamp());
+
+        output.add(node);
     }
 
 }

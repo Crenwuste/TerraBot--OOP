@@ -2,6 +2,7 @@ package model.robot;
 
 import lombok.Data;
 import model.position.Position;
+import java.util.ArrayList;
 
 /**
  * Represents the TerraBot robot exploring the territory
@@ -25,6 +26,11 @@ public class TerraBot {
     private KnowledgeBase knowledgeBase;
 
     /**
+     * Objects that have been scanned at least once
+     */
+    private ArrayList<String> scannedObjects;
+
+    /**
      * Creates a robot with the given starting position and energy
      *
      * @param position     initial position
@@ -34,5 +40,17 @@ public class TerraBot {
         this.position = position;
         this.energyPoints = energyPoints;
         this.knowledgeBase = new KnowledgeBase();
+        this.scannedObjects = new ArrayList<>();
+    }
+
+    /**
+     * Adds an entry to the scan history.
+     *
+     * @param objectName the object name that was scanned
+     */
+    public void addScannedObject(final String objectName) {
+        if (!scannedObjects.contains(objectName)) {
+            scannedObjects.add(objectName);
+        }
     }
 }

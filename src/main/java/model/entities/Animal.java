@@ -15,7 +15,7 @@ public class Animal implements EnvironmentEntity {
     private double mass;
 
     private boolean isActive = false;
-    private int lastMoveTimestamp = 0;
+    private int lastMoveTimestamp;
 
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {

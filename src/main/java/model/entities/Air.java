@@ -24,7 +24,7 @@ public class Air implements EnvironmentEntity {
     private double dustParticles;
 
     private boolean desertStorm = false;
-    private double airQuality = 0;
+    private double airQuality;
     private double changedAirQuality;
 
     private double clampAndRound(final double value) {
@@ -65,7 +65,7 @@ public class Air implements EnvironmentEntity {
         entities.put("mass", mass);
         entities.put("humidity", clampAndRound(humidity));
         entities.put("temperature", temperature);
-        entities.put("oxygenLevel", clampAndRound(oxygenLevel));
+        entities.put("oxygenLevel", Math.round(oxygenLevel * 100) / 100.0);
         entities.put("airQuality", airQuality);
         switch (type) {
             case "TropicalAir" -> entities.put("co2Level", clampAndRound(co2Level));

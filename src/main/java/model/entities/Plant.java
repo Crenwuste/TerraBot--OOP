@@ -17,6 +17,7 @@ public class Plant implements EnvironmentEntity {
     private double growth = 0;
     private double ageSurplus = 0.2;
     private boolean isActive = false;
+    private int lastIteration;
 
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {
@@ -55,7 +56,7 @@ public class Plant implements EnvironmentEntity {
 
     public void increaseGrowth() {
         growth += 0.2;
-        if (growth == 1) {
+        if (growth >= 1) {
             if (ageSurplus == 0.2) {
                 ageSurplus = 0.7; // mature
             } else if (ageSurplus == 0.7) {

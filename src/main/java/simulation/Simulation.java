@@ -71,9 +71,6 @@ public class Simulation {
             for (int j = 0; j < territory.getWidth(); j++) {
                 Soil soil = section[i][j].getSoil();
                 Air air = section[i][j].getAir();
-                Animal animal = section[i][j].getAnimal();
-                Plant plant = section[i][j].getPlant();
-                Water water = section[i][j].getWater();
 
                 soil.calculateQuality();
                 if (changeWeather <= command.getTimestamp()) {
@@ -314,13 +311,13 @@ public class Simulation {
                            final ArrayNode output,
                            final ObjectMapper mapper) {
         ObjectNode node = mapper.createObjectNode();
-        String msg;
+        node.put("command", command.getCommand());
+        node.put("timestamp", command.getTimestamp());
 
         if (7 > terraBot.getEnergyPoints()) {
-            node.put("command", command.getCommand());
             node.put("message", "ERROR: Not enough battery left. Cannot perform action");
-            node.put("timestamp", command.getTimestamp());
             output.add(node);
+
             return;
         }
 
@@ -328,7 +325,6 @@ public class Simulation {
         int y = terraBot.getPosition().getY();
         Section[][] sections = territory.getSections();
         Section currentSection = sections[x][y];
-        boolean success = true;
 
         // Check what object is at current position and activate it
         if (currentSection.getWater() != null && command.getSound().equals("none")
@@ -338,7 +334,7 @@ public class Simulation {
             water.setActive(true);
             water.setLastIterTimestamp(command.getTimestamp());
             terraBot.addScannedObject(water.getName());
-            msg = "The scanned object is water.";
+            node.put("message", "The scanned object is water.");
         } else if (currentSection.getPlant() != null && command.getSound().equals("none")
                 && !command.getColor().equals("none")) {
             // Scan plant - activate it
@@ -346,27 +342,22 @@ public class Simulation {
             plant.setActive(true);
             plant.setLastIteration(command.getTimestamp());
             terraBot.addScannedObject(plant.getName());
-            msg = "The scanned object is a plant.";
+            node.put("message", "The scanned object is a plant.");
         } else if (currentSection.getAnimal() != null && !command.getSound().equals("none")) {
             // Scan animal - activate it
             Animal animal = currentSection.getAnimal();
             animal.setActive(true);
             animal.setLastMoveTimestamp(command.getTimestamp());
             terraBot.addScannedObject(animal.getName());
-            msg = "The scanned object is an animal.";
+            node.put("message", "The scanned object is an animal.");
         } else {
-            msg = "ERROR: Object not found. Cannot perform action";
-            success = false;
+            node.put("message", "ERROR: Object not found. Cannot perform action");
+            output.add(node);
+            return;
         }
 
-        if (success) {
-            int energyUsed = 7;
-            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - energyUsed);
-        }
-
-        node.put("command", command.getCommand());
-        node.put("message", msg);
-        node.put("timestamp", command.getTimestamp());
+        int energyUsed = 7;
+        terraBot.setEnergyPoints(terraBot.getEnergyPoints() - energyUsed);
 
         output.add(node);
     }
@@ -505,12 +496,19 @@ public class Simulation {
         if (bestSectionWithBoth != null) {
             // Priority 1: Section with both plant and water
             targetSection = bestSectionWithBoth;
+
+            sectionWithWater(targetSection, animal);
+            sectionWithPlant(targetSection, animal);
         } else if (firstSectionWithPlant != null) {
             // Priority 2a: First section with plant
             targetSection = firstSectionWithPlant;
+
+            sectionWithPlant(targetSection, animal);
         } else if (bestSectionWithWater != null) {
             // Priority 2b: Best section with water
             targetSection = bestSectionWithWater;
+
+            sectionWithWater(targetSection, animal);
         }
 
         // Move animal to new section
@@ -548,27 +546,26 @@ public class Simulation {
                           final ArrayNode output,
                           final ObjectMapper mapper) {
         ObjectNode node = mapper.createObjectNode();
-        String msg;
+        node.put("command", command.getCommand());
+        node.put("timestamp", command.getTimestamp());
+
 
         if (2 > terraBot.getEnergyPoints()) {
-            node.put("command", command.getCommand());
             node.put("message", "ERROR: Not enough battery left. Cannot perform action");
-            node.put("timestamp", command.getTimestamp());
             output.add(node);
             return;
         }
 
         if (terraBot.getScannedObjects().contains(command.getComponents())) {
             terraBot.getKnowledgeBase().addFact(command.getComponents(), command.getSubject());
-            terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 2);
-            msg = "The fact has been successfully saved in the database.";
+            node.put("message", "The fact has been successfully saved in the database.");
         } else {
-            msg = "ERROR: Subject not yet saved. Cannot perform action";
+            node.put("message", "ERROR: Subject not yet saved. Cannot perform action");
+            output.add(node);
+            return;
         }
 
-        node.put("command", command.getCommand());
-        node.put("message", msg);
-        node.put("timestamp", command.getTimestamp());
+        terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 2);
 
         output.add(node);
     }
@@ -581,36 +578,10 @@ public class Simulation {
             return false;
         }
 
-        String required = improvementType.toLowerCase();
-
         for (String fact : facts) {
-            String normalized = fact.toLowerCase();
-            switch (required) {
-                case "plantvegetation" -> {
-                    if (normalized.equals("method to plantvegetation")
-                            || normalized.equals("method to plant " + componentName)
-                            || normalized.startsWith("method to plant ")) {
-                        return true;
-                    }
-                }
-                case "fertilizesoil" -> {
-                    if (normalized.contains("method to fertilize with " + componentName)) {
-                        return true;
-                    }
-                }
-                case "increasehumidity" -> {
-                    if (normalized.contains("method to increase humidity")) {
-                        return true;
-                    }
-                }
-                case "increasemoisture" -> {
-                    if (normalized.contains("method to increase moisture")) {
-                        return true;
-                    }
-                }
-                default -> {
-                    return false;
-                }
+            String firstWord = fact.split("\\s")[0];
+            if (firstWord.equals("Method")) {
+               return true;
             }
         }
         return false;
@@ -628,9 +599,7 @@ public class Simulation {
         String msg;
 
         if (10 > terraBot.getEnergyPoints()) {
-            node.put("command", command.getCommand());
             node.put("message", "ERROR: Not enough battery left. Cannot perform action");
-            node.put("timestamp", command.getTimestamp());
             output.add(node);
             return;
         }
@@ -639,15 +608,13 @@ public class Simulation {
         String componentName = command.getName();
 
         if (!hasImprovementFact(componentName, improvementType)) {
-            msg = "ERROR: Subject not yet saved. Cannot perform action";
-            node.put("message", msg);
+            node.put("message", "ERROR: Subject not yet saved. Cannot perform action");
             output.add(node);
             return;
         }
 
         if (!terraBot.getScannedObjects().contains(componentName)) {
-            msg = "ERROR: Fact not yet saved. Cannot perform action";//"ERROR: Fact not yet saved. Cannot perform action"
-            node.put("message", msg);
+            node.put("message", "ERROR: Fact not yet saved. Cannot perform action");
             output.add(node);
             return;
         }
@@ -710,9 +677,6 @@ public class Simulation {
                     }
                 }
             }
-        }
-        if (msg.isEmpty()) {
-            msg = "ERROR: The weather change does not affect the environment. Cannot perform action";
         }
 
         ObjectNode node = mapper.createObjectNode();

@@ -607,13 +607,13 @@ public class Simulation {
         String improvementType = command.getImprovementType();
         String componentName = command.getName();
 
-        if (!hasImprovementFact(componentName, improvementType)) {
+        if (!terraBot.getScannedObjects().contains(componentName)) {
             node.put("message", "ERROR: Subject not yet saved. Cannot perform action");
             output.add(node);
             return;
         }
 
-        if (!terraBot.getScannedObjects().contains(componentName)) {
+        if (!hasImprovementFact(componentName, improvementType)) {
             node.put("message", "ERROR: Fact not yet saved. Cannot perform action");
             output.add(node);
             return;
@@ -677,6 +677,9 @@ public class Simulation {
                     }
                 }
             }
+        }
+        if (msg.isEmpty()) {
+            msg = "ERROR: The weather change does not affect the environment. Cannot perform action";
         }
 
         ObjectNode node = mapper.createObjectNode();

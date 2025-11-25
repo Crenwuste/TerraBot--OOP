@@ -84,7 +84,7 @@
   "timestamp" : 21
 }, {
   "command" : "scanObject",
-  "message" : "ERROR: Not enough energy to perform action",
+  "message" : "ERROR: Not enough battery left. Cannot perform action",
   "timestamp" : 22
 }, {
   "command" : "moveRobot",

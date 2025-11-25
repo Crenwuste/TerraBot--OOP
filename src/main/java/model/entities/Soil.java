@@ -64,7 +64,7 @@ public class Soil implements EnvironmentEntity {
         entities.put("nitrogen", nitrogen);
         entities.put("waterRetention", clampAndRound(waterRetention));
         entities.put("soilpH", soilpH);
-        entities.put("organicMatter", organicMatter);
+        entities.put("organicMatter", clampAndRound(organicMatter));
         entities.put("soilQuality", soilQuality);
         switch (type) {
             case "ForestSoil" -> entities.put("leafLitter", leafLitter);

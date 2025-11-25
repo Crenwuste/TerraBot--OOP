@@ -16,6 +16,7 @@ public class Animal implements EnvironmentEntity {
 
     private boolean isActive = false;
     private int lastMoveTimestamp;
+    private boolean feedWithAnimal = false;
 
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {
@@ -23,7 +24,7 @@ public class Animal implements EnvironmentEntity {
 
         entities.put("type", type);
         entities.put("name", name);
-        entities.put("mass", mass);
+        entities.put("mass", Math.round(mass * 100) / 100.0);
 
         return entities;
     }

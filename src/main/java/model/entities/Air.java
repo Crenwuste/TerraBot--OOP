@@ -66,7 +66,7 @@ public class Air implements EnvironmentEntity {
         entities.put("humidity", clampAndRound(humidity));
         entities.put("temperature", temperature);
         entities.put("oxygenLevel", Math.round(oxygenLevel * 100) / 100.0);
-        entities.put("airQuality", airQuality);
+        entities.put("airQuality", clampAndRound(airQuality));
         switch (type) {
             case "TropicalAir" -> entities.put("co2Level", clampAndRound(co2Level));
             case "PolarAir" ->entities.put("iceCrystalConcentration", iceCrystalConcentration);

@@ -42,15 +42,4 @@ public class TerraBot {
         this.knowledgeBase = new KnowledgeBase();
         this.scannedObjects = new ArrayList<>();
     }
-
-    /**
-     * Adds an entry to the scan history.
-     *
-     * @param objectName the object name that was scanned
-     */
-    public void addScannedObject(final String objectName) {
-        if (!scannedObjects.contains(objectName)) {
-            scannedObjects.add(objectName);
-        }
-    }
 }

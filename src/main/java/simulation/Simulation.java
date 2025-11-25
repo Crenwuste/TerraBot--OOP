@@ -43,6 +43,11 @@ public class Simulation {
     private int changeWeather = 0;
 
     /**
+     * Last timestamp for which entities were updated
+     */
+    private int lastUpdatedTimestamp = 0;
+
+    /**
      * Creates a new simulation for the given territory and robot
      *
      * @param territory the simulated territory
@@ -65,7 +70,11 @@ public class Simulation {
                                final ObjectMapper mapper) {
         Section[][] section = territory.getSections();
 
-        updateActiveEntities(section, command.getTimestamp());
+        // Update entities for all timestamps between last update and current command
+        for (int timestamp = lastUpdatedTimestamp + 1; timestamp <= command.getTimestamp(); timestamp++) {
+            updateActiveEntities(section, timestamp);
+        }
+        lastUpdatedTimestamp = command.getTimestamp();
 
         for (int i = 0; i < territory.getHeight(); i++) {
             for (int j = 0; j < territory.getWidth(); j++) {
@@ -75,6 +84,7 @@ public class Simulation {
                 soil.calculateQuality();
                 if (changeWeather <= command.getTimestamp()) {
                     air.calculateQuality();
+                    air.setDesertStorm(false);
                 }
             }
         }
@@ -333,7 +343,7 @@ public class Simulation {
             Water water = currentSection.getWater();
             water.setActive(true);
             water.setLastIterTimestamp(command.getTimestamp());
-            terraBot.addScannedObject(water.getName());
+            terraBot.getScannedObjects().add(water.getName());
             node.put("message", "The scanned object is water.");
         } else if (currentSection.getPlant() != null && command.getSound().equals("none")
                 && !command.getColor().equals("none")) {
@@ -341,14 +351,14 @@ public class Simulation {
             Plant plant = currentSection.getPlant();
             plant.setActive(true);
             plant.setLastIteration(command.getTimestamp());
-            terraBot.addScannedObject(plant.getName());
+            terraBot.getScannedObjects().add(plant.getName());
             node.put("message", "The scanned object is a plant.");
         } else if (currentSection.getAnimal() != null && !command.getSound().equals("none")) {
             // Scan animal - activate it
             Animal animal = currentSection.getAnimal();
             animal.setActive(true);
             animal.setLastMoveTimestamp(command.getTimestamp());
-            terraBot.addScannedObject(animal.getName());
+            terraBot.getScannedObjects().add(animal.getName());
             node.put("message", "The scanned object is an animal.");
         } else {
             node.put("message", "ERROR: Object not found. Cannot perform action");
@@ -376,12 +386,17 @@ public class Simulation {
                 Air air = currentSection.getAir();
                 Soil soil = currentSection.getSoil();
                 Plant plant = currentSection.getPlant();
+                Water water = currentSection.getWater();
+                Animal animal = currentSection.getAnimal();
+
+                boolean hasPlant = plant != null && plant.isActive();
+                boolean hasWater = water != null && water.isActive();
+                boolean hasAnimal = animal != null && animal.isActive();
 
                 // Update active water
-                Water water = currentSection.getWater();
-                if (water != null && water.isActive()) {
+                if (hasWater) {
                     // Update waterRetention and humidity after 2 iterations
-                    while (currentTimestamp - water.getLastIterTimestamp() >= 2) {
+                    if (currentTimestamp - water.getLastIterTimestamp() >= 2) {
                         air.setHumidity(air.getHumidity() + 0.1);
                         soil.setWaterRetention(soil.getWaterRetention() + 0.1);
                         water.setLastIterTimestamp(water.getLastIterTimestamp() + 2);
@@ -389,10 +404,10 @@ public class Simulation {
                 }
 
                 // Update active plants
-                if (plant != null && plant.isActive()) {
-                    while (currentTimestamp - plant.getLastIteration() != 0) {
+                if (hasPlant) {
+                    if (currentTimestamp > plant.getLastIteration()) {
                         plant.increaseGrowth();
-                        if (water != null && water.isActive()) {
+                        if (hasWater) {
                             plant.increaseGrowth();
                         }
                         if (plant.getAgeSurplus() == 0) {
@@ -403,16 +418,16 @@ public class Simulation {
                             air.setOxygenLevel(air.getOxygenLevel() + oxygenProduced);
                         }
 
-                        plant.setLastIteration(plant.getLastIteration() + 1);
+                        plant.setLastIteration(currentTimestamp);
                     }
                 }
 
                 // Update active animals
-                Animal animal = currentSection.getAnimal();
                 if (animal != null && animal.isActive()) {
                     // Animal moves every 2 iterations (timestamps)
                     // Check if at least 2 timestamps have passed since last move
-                    while (currentTimestamp - animal.getLastMoveTimestamp() >= 2) {
+                    feedAnimal(animal, currentSection);
+                    if (currentTimestamp - animal.getLastMoveTimestamp() >= 2) {
                         moveAnimal(animal, i, j, sections);
                         animal.setLastMoveTimestamp(animal.getLastMoveTimestamp() + 2);
                     }
@@ -420,6 +435,15 @@ public class Simulation {
 
             }
         }
+    }
+
+    private void feedAnimal(final Animal animal, final Section section) {
+        if (animal.isFeedWithAnimal()) {
+            animal.setFeedWithAnimal(false);
+            return;
+        }
+        sectionWithWater(section, animal);
+        sectionWithPlant(section, animal);
     }
 
     /**
@@ -445,6 +469,9 @@ public class Simulation {
         // Priority 3: First available section
         Section firstAvailableSection = null;
 
+        boolean isCarnivoreOrParasite = animal.getType().equals("Carnivores")
+                || animal.getType().equals("Parasites");
+
         for (Direction dir : Direction.values()) {
             int newX = dir.getNewX(currentX);
             int newY = dir.getNewY(currentY);
@@ -456,6 +483,10 @@ public class Simulation {
             }
 
             Section neighborSection = sections[newX][newY];
+
+            if (!isCarnivoreOrParasite && neighborSection.getAnimal() != null) {
+                continue;
+            }
 
             Plant neighborPlant = neighborSection.getPlant();
             Water neighborWater = neighborSection.getWater();
@@ -496,19 +527,21 @@ public class Simulation {
         if (bestSectionWithBoth != null) {
             // Priority 1: Section with both plant and water
             targetSection = bestSectionWithBoth;
-
-            sectionWithWater(targetSection, animal);
-            sectionWithPlant(targetSection, animal);
         } else if (firstSectionWithPlant != null) {
             // Priority 2a: First section with plant
             targetSection = firstSectionWithPlant;
-
-            sectionWithPlant(targetSection, animal);
         } else if (bestSectionWithWater != null) {
             // Priority 2b: Best section with water
             targetSection = bestSectionWithWater;
+        }
 
-            sectionWithWater(targetSection, animal);
+        if (isCarnivoreOrParasite) {
+            if (targetSection.getAnimal() != null) {
+                animal.setMass(animal.getMass() + targetSection.getAnimal().getMass());
+                animal.setFeedWithAnimal(true);
+
+                targetSection.setAnimal(null);
+            }
         }
 
         // Move animal to new section
@@ -518,6 +551,9 @@ public class Simulation {
 
     private void sectionWithPlant(final Section sectionWithPlant, final Animal animal) {
         Plant plant = sectionWithPlant.getPlant();
+        if (plant == null || !plant.isActive()) {
+            return;
+        }
 
         animal.setMass(animal.getMass() + plant.getMass());
         sectionWithPlant.setPlant(null);
@@ -525,6 +561,9 @@ public class Simulation {
 
     private void sectionWithWater(final Section sectionWithWater, final Animal animal) {
         Water water = sectionWithWater.getWater();
+        if (water == null || !water.isActive()) {
+            return;
+        }
 
         double intakeRate = 0.08;
         double waterToDrink = Math.min(animal.getMass() * intakeRate, water.getMass());
@@ -581,7 +620,7 @@ public class Simulation {
         for (String fact : facts) {
             String firstWord = fact.split("\\s")[0];
             if (firstWord.equals("Method")) {
-               return true;
+                return true;
             }
         }
         return false;
@@ -651,6 +690,7 @@ public class Simulation {
         }
 
         terraBot.setEnergyPoints(terraBot.getEnergyPoints() - 10);
+        terraBot.getScannedObjects().remove(componentName);
 
         node.put("message", msg);
 

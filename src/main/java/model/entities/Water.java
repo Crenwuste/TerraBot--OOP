@@ -10,6 +10,19 @@ import lombok.Data;
 @Data
 public class Water implements EnvironmentEntity {
 
+    // Constants for water quality calculation
+    private static final double MAX_PERCENTAGE = 100;
+    private static final double IDEAL_PH = 7.5;
+    private static final double MAX_SALINITY = 350;
+
+    // Constants for water quality weights
+    private static final double PURITY_WEIGHT = 0.3;
+    private static final double PH_WEIGHT = 0.2;
+    private static final double SALINITY_WEIGHT = 0.15;
+    private static final double TURBIDITY_WEIGHT = 0.1;
+    private static final double CONTAMINANT_WEIGHT = 0.15;
+    private static final double FROZEN_WEIGHT = 0.2;
+
     private String type;
     private String name;
     private double mass;
@@ -23,6 +36,12 @@ public class Water implements EnvironmentEntity {
     private boolean isActive = false;
     private int lastIterTimestamp;
 
+    /**
+     * Serializes the water entity for map/env outputs.
+     *
+     * @param mapper jackson mapper
+     * @return json node describing water
+     */
     @Override
     public ObjectNode getEntities(final ObjectMapper mapper) {
         ObjectNode entities = mapper.createObjectNode();
@@ -34,21 +53,32 @@ public class Water implements EnvironmentEntity {
         return entities;
     }
 
+    /**
+     * Water does not directly damage TerraBot, so this always returns 0.
+     *
+     * @return zero damage
+     */
     @Override
-    public double giveRobotDamage() {
+    public double calculateBlockingProbability() {
         return 0;
     }
 
+    /**
+     * Computes the quality score of the water
+     *
+     * @return quality score between 0 and 100
+     */
     public double waterQuality() {
         // Normalize factors
-        double purity_score = purity / 100;
-        double pH_score = 1 - Math.abs(pH - 7.5) / 7.5;
-        double salinity_score = 1 - (salinity / 350);
-        double turbidity_score = 1 - (turbidity / 100);
-        double contaminant_score = 1 - (contaminantIndex / 100);
-        double frozen_score = frozen ? 0 : 1;
+        double purityScore = purity / MAX_PERCENTAGE;
+        double phScore = 1 - Math.abs(pH - IDEAL_PH) / IDEAL_PH;
+        double salinityScore = 1 - (salinity / MAX_SALINITY);
+        double turbidityScore = 1 - (turbidity / MAX_PERCENTAGE);
+        double contaminantScore = 1 - (contaminantIndex / MAX_PERCENTAGE);
+        double frozenScore = frozen ? 0 : 1;
 
-        return (0.3 * purity_score + 0.2 * pH_score + 0.15 * salinity_score
-                + 0.1 * turbidity_score + 0.15 * contaminant_score + 0.2 * frozen_score) * 100;
+        return (PURITY_WEIGHT * purityScore + PH_WEIGHT * phScore + SALINITY_WEIGHT * salinityScore
+                + TURBIDITY_WEIGHT * turbidityScore + CONTAMINANT_WEIGHT * contaminantScore
+                + FROZEN_WEIGHT * frozenScore) * MAX_PERCENTAGE;
     }
 }

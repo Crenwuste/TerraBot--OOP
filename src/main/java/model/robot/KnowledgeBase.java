@@ -64,11 +64,4 @@ public class KnowledgeBase {
         }
         return new ArrayList<>();
     }
-
-    /**
-     * Gets all topics in the knowledge base
-     */
-    public ArrayList<String> getAllTopics() {
-        return topics;
-    }
 }

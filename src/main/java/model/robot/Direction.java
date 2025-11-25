@@ -3,7 +3,7 @@ package model.robot;
 import lombok.Getter;
 
 /**
- * Represents movement directions for TerraBot
+ * Represents movement directions for TerraBot and animals
  */
 @Getter
 public enum Direction {

@@ -26,7 +26,7 @@ public class TerraBot {
     private KnowledgeBase knowledgeBase;
 
     /**
-     * Objects that have been scanned at least once
+     * Objects that have been scanned
      */
     private ArrayList<String> scannedObjects;
 

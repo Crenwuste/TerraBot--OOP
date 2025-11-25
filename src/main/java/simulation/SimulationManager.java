@@ -122,6 +122,3 @@ public class SimulationManager {
         simulation.executeCommand(command, output, mapper);
     }
 }
-
-
-

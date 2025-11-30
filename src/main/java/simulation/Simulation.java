@@ -4,12 +4,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fileio.CommandInput;
+import lombok.Data;
 import lombok.Getter;
 import model.entities.Water;
-import model.entities.Air;
+import model.entities.air.Air;
 import model.entities.Animal;
 import model.entities.Plant;
-import model.entities.Soil;
+import model.entities.soil.Soil;
 import model.environment.Section;
 import model.environment.Territory;
 import model.position.Position;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
  * Represents a single simulation run for TerraBot
  */
 @Getter
+@Data
 public class Simulation {
 
     private static final int SCAN_ENERGY_COST = 7;
@@ -63,17 +65,6 @@ public class Simulation {
      * Last timestamp for which entities were updated
      */
     private int lastUpdatedTimestamp = 0;
-
-    /**
-     * Creates a new simulation for the given territory and robot
-     *
-     * @param territory the simulated territory
-     * @param terraBot  the robot exploring the territory
-     */
-    public Simulation(final Territory territory, final TerraBot terraBot) {
-        this.territory = territory;
-        this.terraBot = terraBot;
-    }
 
     /**
      * Executes a single command within this simulation
@@ -316,7 +307,7 @@ public class Simulation {
                            final ArrayNode output,
                            final ObjectNode node) {
         if (SCAN_ENERGY_COST > terraBot.getEnergyPoints()) {
-            node.put("message", "ERROR: Not enough battery left. Cannot perform action");
+            node.put("message", "ERROR: Not enough energy to perform action");
             output.add(node);
 
             return;
@@ -424,7 +415,8 @@ public class Simulation {
                             || animal.isAteAnimal();
                     if (wasWellFed && !animal.isSick()) {
                         // Calculate organic matter to add
-                        boolean ateBoth = animal.isAtePlant() && animal.isDrankWater();
+                        boolean ateBoth = (animal.isAtePlant() && animal.isDrankWater())
+                                || (animal.isDrankWater() && animal.isAteAnimal());
                         double organicMatterToAdd = ateBoth
                                 ? ORGANIC_MATTER_BOTH_INCREMENT
                                 : ORGANIC_MATTER_SINGLE_INCREMENT;
@@ -438,9 +430,9 @@ public class Simulation {
                     // Animal moves every 2 iterations
                     // Check if at least 2 timestamps have passed since last move
                     if (currentTimestamp - animal.getLastMoveTimestamp() >= 2) {
-                        moveAnimal(animal, i, j, sections);
-                        animal.setLastMoveTimestamp(
-                                animal.getLastMoveTimestamp() + 2);
+                        Section targetSection = moveAnimal(animal, i, j, sections);
+                        feedAnimal(animal, targetSection);
+                        animal.setLastMoveTimestamp(animal.getLastMoveTimestamp() + 2);
                     }
                 }
             }
@@ -451,7 +443,6 @@ public class Simulation {
         // Reset flags at the beginning of each timestamp
         animal.setAtePlant(false);
         animal.setDrankWater(false);
-        animal.setAteAnimal(false);
 
         boolean drankWater = sectionWithWater(section, animal);
         boolean atePlant = sectionWithPlant(section, animal);
@@ -471,9 +462,10 @@ public class Simulation {
      * @param currentX current x coordinate
      * @param currentY current y coordinate
      * @param sections the territory sections
+     * @return the section where the animal moved
      */
-    private void moveAnimal(final Animal animal, final int currentX, final int currentY,
-                            final Section[][] sections) {
+    private Section moveAnimal(final Animal animal, final int currentX, final int currentY,
+                               final Section[][] sections) {
         // Priority 1: Section with both plant AND water
         Section bestSectionWithBoth = null;
         double bestWaterQuality = -1;
@@ -565,6 +557,7 @@ public class Simulation {
         // Move animal to new section
         sections[currentX][currentY].setAnimal(null);
         targetSection.setAnimal(animal);
+        return targetSection;
     }
 
     private boolean sectionWithPlant(final Section sectionWithPlant, final Animal animal) {

@@ -10,6 +10,9 @@ import lombok.Data;
 @Data
 public class Water implements EnvironmentEntity {
 
+    // Constant for rounding
+    private static final double ROUNDING_FACTOR = 100;
+
     // Constants for water quality calculation
     private static final double MAX_PERCENTAGE = 100;
     private static final double IDEAL_PH = 7.5;
@@ -48,7 +51,7 @@ public class Water implements EnvironmentEntity {
 
         entities.put("type", type);
         entities.put("name", name);
-        entities.put("mass", mass);
+        entities.put("mass", Math.round(mass * ROUNDING_FACTOR) / ROUNDING_FACTOR);
 
         return entities;
     }

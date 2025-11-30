@@ -8,10 +8,12 @@ import fileio.SimulationInput;
 import fileio.SoilInput;
 import fileio.TerritorySectionParamsInput;
 import fileio.WaterInput;
-import model.entities.Air;
+import model.entities.air.Air;
+import model.entities.air.AirFactory;
 import model.entities.Animal;
 import model.entities.Plant;
-import model.entities.Soil;
+import model.entities.soil.Soil;
+import model.entities.soil.SoilFactory;
 import model.entities.Water;
 import model.environment.Section;
 import model.environment.Territory;
@@ -68,19 +70,7 @@ public class SimulationFactory {
         for (SoilInput soilInput : soils) {
             for (PairInput sectionPos : soilInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
-                Soil soil = new Soil();
-                soil.setType(soilInput.getType());
-                soil.setName(soilInput.getName());
-                soil.setMass(soilInput.getMass());
-                soil.setNitrogen(soilInput.getNitrogen());
-                soil.setWaterRetention(soilInput.getWaterRetention());
-                soil.setSoilpH(soilInput.getSoilpH());
-                soil.setOrganicMatter(soilInput.getOrganicMatter());
-                soil.setLeafLitter(soilInput.getLeafLitter());
-                soil.setWaterLogging(soilInput.getWaterLogging());
-                soil.setPermafrostDepth(soilInput.getPermafrostDepth());
-                soil.setRootDensity(soilInput.getRootDensity());
-                soil.setSalinity(soilInput.getSalinity());
+                Soil soil = SoilFactory.createSoilFromInput(soilInput);
                 section.setSoil(soil);
             }
         }
@@ -151,18 +141,7 @@ public class SimulationFactory {
         for (AirInput airInput : airs) {
             for (PairInput sectionPos : airInput.getSections()) {
                 Section section = ensureSection(territory, sectionPos);
-                Air air = new Air();
-                air.setType(airInput.getType());
-                air.setName(airInput.getName());
-                air.setMass(airInput.getMass());
-                air.setHumidity(airInput.getHumidity());
-                air.setTemperature(airInput.getTemperature());
-                air.setOxygenLevel(airInput.getOxygenLevel());
-                air.setAltitude(airInput.getAltitude());
-                air.setPollenLevel(airInput.getPollenLevel());
-                air.setCo2Level(airInput.getCo2Level());
-                air.setIceCrystalConcentration(airInput.getIceCrystalConcentration());
-                air.setDustParticles(airInput.getDustParticles());
+                Air air = AirFactory.createAirFromInput(airInput);
                 section.setAir(air);
             }
         }

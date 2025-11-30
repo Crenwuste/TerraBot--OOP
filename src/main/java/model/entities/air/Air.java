@@ -1,71 +1,55 @@
-package model.entities;
+package model.entities.air;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import fileio.CommandInput;
 import lombok.Data;
+import model.entities.EnvironmentEntity;
 
 /**
- * Represents air conditions in a territory section
+ * Abstract base class representing air conditions in a territory section.
  */
 @Data
-public class Air implements EnvironmentEntity {
+public abstract class Air implements EnvironmentEntity {
 
     // Constants for clamping and rounding
-    private static final int MIN_VALUE = 0;
-    private static final int MAX_VALUE = 100;
-    private static final double ROUNDING_FACTOR = 100;
+    protected static final int MIN_VALUE = 0;
+    protected static final int MAX_VALUE = 100;
+    protected static final double ROUNDING_FACTOR = 100;
 
     // Constants for air quality calculation multipliers
-    private static final double OXYGEN_MUL = 2;
-    private static final double TROPICAL_HUMIDITY_MUL = 0.5;
-    private static final double TROPICAL_CO2_MUL = 0.01;
-    private static final double POLAR_ICE_CRYSTAL_MUL = 0.05;
-    private static final double TEMPERATE_HUMIDITY_MUL = 0.7;
-    private static final double TEMPERATE_POLLEN_MUL = 0.1;
-    private static final double DESERT_DUST_MUL = 0.2;
-    private static final double DESERT_TEMPERATURE_MUL = 0.3;
-    private static final double MOUNTAIN_ALTITUDE_DIV = 1000;
-    private static final double MOUNTAIN_ALTITUDE_MUL = 0.5;
-    private static final double MOUNTAIN_HUMIDITY_MUL = 0.6;
+    protected static final double OXYGEN_MUL = 2;
 
     // Constants for air quality thresholds
-    private static final double GOOD_AIR_QUALITY = 70;
-    private static final double MODERATE_AIR_QUALITY = 40;
-    private static final double TOXICITY_THRESHOLD_FACTOR = 0.8;
-
-    // Constants for max scores by air type
-    private static final int TROPICAL_MAX_SCORE = 82;
-    private static final int POLAR_MAX_SCORE = 142;
-    private static final int TEMPERATE_MAX_SCORE = 84;
-    private static final int DESERT_MAX_SCORE = 65;
-    private static final int MOUNTAIN_MAX_SCORE = 78;
+    protected static final double GOOD_AIR_QUALITY = 70;
+    protected static final double MODERATE_AIR_QUALITY = 40;
+    protected static final double TOXICITY_THRESHOLD_FACTOR = 0.8;
 
     // Constants for toxicity calculation
-    private static final int TOXICITY_MUL = 100;
+    protected static final int TOXICITY_MUL = 100;
 
     // Constants for weather change effects
-    private static final double RAINFALL_MUL = 0.3;
-    private static final double POLAR_STORM_WIND_MUL = 0.2;
-    private static final double SPRING_SEASON_PENALTY = 15;
-    private static final double DESERT_STORM_PENALTY = 30;
-    private static final double HIKERS_PENALTY_MUL = 0.1;
+    protected static final double RAINFALL_MUL = 0.3;
+    protected static final double POLAR_STORM_WIND_MUL = 0.2;
+    protected static final double SPRING_SEASON_PENALTY = 15;
+    protected static final double DESERT_STORM_PENALTY = 30;
+    protected static final double HIKERS_PENALTY_MUL = 0.1;
 
-    private String type;
-    private String name;
-    private double mass;
-    private double humidity;
-    private double temperature;
-    private double oxygenLevel;
-    private double altitude;
-    private double pollenLevel;
-    private double co2Level;
-    private double iceCrystalConcentration;
-    private double dustParticles;
+    protected String type;
+    protected String name;
+    protected double mass;
+    protected double humidity;
+    protected double temperature;
+    protected double oxygenLevel;
+    protected double altitude;
+    protected double pollenLevel;
+    protected double co2Level;
+    protected double iceCrystalConcentration;
+    protected double dustParticles;
 
-    private boolean desertStorm = false;
-    private double airQuality;
-    private double changedAirQuality;
+    protected boolean desertStorm = false;
+    protected double airQuality;
+    protected double changedAirQuality;
 
     /**
      * Clamps a numeric value within {@link #MIN_VALUE} and {@link #MAX_VALUE} and rounds it
@@ -73,30 +57,42 @@ public class Air implements EnvironmentEntity {
      * @param value raw value
      * @return clamped and rounded value
      */
-    private double clampAndRound(final double value) {
+    protected double clampAndRound(final double value) {
         double aux = Math.max(MIN_VALUE, Math.min(MAX_VALUE, value));
         return Math.round(aux * ROUNDING_FACTOR) / ROUNDING_FACTOR;
     }
 
     /**
-     * Computes the current air quality score based on the air type and its properties
+     * Computes the current air quality score based on the air type and its properties.
+     * This method delegates to the type-specific implementation.
      */
     public void calculateQuality() {
-        airQuality = switch (type) {
-            case "TropicalAir" -> oxygenLevel * OXYGEN_MUL + humidity * TROPICAL_HUMIDITY_MUL
-                    - co2Level * TROPICAL_CO2_MUL;
-            case "PolarAir" -> oxygenLevel * OXYGEN_MUL + (MAX_VALUE - Math.abs(temperature))
-                    - iceCrystalConcentration * POLAR_ICE_CRYSTAL_MUL;
-            case "TemperateAir" -> oxygenLevel * OXYGEN_MUL + humidity * TEMPERATE_HUMIDITY_MUL
-                    - pollenLevel * TEMPERATE_POLLEN_MUL;
-            case "DesertAir" -> oxygenLevel * OXYGEN_MUL - dustParticles * DESERT_DUST_MUL
-                    - temperature * DESERT_TEMPERATURE_MUL;
-            case "MountainAir" -> (oxygenLevel - (altitude / MOUNTAIN_ALTITUDE_DIV
-                    * MOUNTAIN_ALTITUDE_MUL)) * OXYGEN_MUL + humidity * MOUNTAIN_HUMIDITY_MUL;
-            default -> 0;
-        };
+        airQuality = calculateQualityInternal();
         airQuality = clampAndRound(airQuality);
     }
+
+    /**
+     * Type-specific air quality calculation.
+     *
+     * @return raw air quality score before clamping
+     */
+    protected abstract double calculateQualityInternal();
+
+    /**
+     * Returns the maximum possible score for this air type.
+     * Used in toxicity calculations.
+     *
+     * @return maximum score for this air type
+     */
+    protected abstract int getMaxScore();
+
+    /**
+     * Adds type-specific fields to the JSON representation.
+     *
+     * @param entities the JSON object node to add fields to
+     * @param mapper jackson mapper used for creating nodes
+     */
+    protected abstract void addTypeSpecificFields(ObjectNode entities, ObjectMapper mapper);
 
     /**
      * Translates the numerical air quality into a message
@@ -131,14 +127,9 @@ public class Air implements EnvironmentEntity {
         entities.put("temperature", temperature);
         entities.put("oxygenLevel", Math.round(oxygenLevel * ROUNDING_FACTOR) / ROUNDING_FACTOR);
         entities.put("airQuality", clampAndRound(airQuality));
-        switch (type) {
-            case "TropicalAir" -> entities.put("co2Level", clampAndRound(co2Level));
-            case "PolarAir" -> entities.put("iceCrystalConcentration", iceCrystalConcentration);
-            case "TemperateAir" -> entities.put("pollenLevel", pollenLevel);
-            case "DesertAir" -> entities.put("desertStorm", desertStorm);
-            case "MountainAir" -> entities.put("altitude", altitude);
-            default -> { }
-        }
+
+        // Add type-specific fields through polymorphism
+        addTypeSpecificFields(entities, mapper);
 
         return entities;
     }
@@ -165,17 +156,6 @@ public class Air implements EnvironmentEntity {
         toxicity = clampAndRound(toxicity);
 
         return toxicity;
-    }
-
-    private int getMaxScore() {
-        return switch (type) {
-            case "TropicalAir" -> TROPICAL_MAX_SCORE;
-            case "PolarAir" -> POLAR_MAX_SCORE;
-            case "TemperateAir" -> TEMPERATE_MAX_SCORE;
-            case "DesertAir" -> DESERT_MAX_SCORE;
-            case "MountainAir" -> MOUNTAIN_MAX_SCORE;
-            default -> 0;
-        };
     }
 
     /**

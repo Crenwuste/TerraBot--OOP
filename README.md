@@ -80,7 +80,7 @@ src/main/java/
 
 - **model.position**: Reprezentare a pozitiei in teritoriu.
 
-- **model.robot**: Componentele robotului TerraBot, inclusiv baza de cunostinte si logica de miscare.
+- **model.robot**: Componentele robotului TerraBot, inclusiv baza de cunostinte care gestioneaza facts-urile invatate si logica de miscare.
 
 - **simulation**: Logica de simulare care orchestreaza interactiunile intre robot si mediu.
 
@@ -88,13 +88,13 @@ src/main/java/
 
 ### Main Classes
 
-- **TerraBot**: Robotul principal care exploreaza teritoriul. Gestioneaza pozitia, energia si baza de cunostinte.
+- **TerraBot**: Robotul principal care exploreaza teritoriul. Gestioneaza pozitia, energia si baza de cunostinte. Ofera metode pentru accesarea secțiunii curente.
 
 - **Simulation**: Clasa centrala care orchestreaza simularea. Proceseaza comenzile, actualizeaza entitatile si calculeaza interactiunile.
 
 - **Territory**: Reprezinta teritoriul ca o grila bidimensionala de sectiuni, fiecare continand entitati de mediu.
 
-- **Section**: O celula individuala din teritoriu care poate contine sol, aer, apa, plante si animale.
+- **Section**: O celula individuala din teritoriu care poate contine sol, aer, apa, plante si animale. Ofera metode pentru calcularea costului de miscare si pentru gestionarea interactiunilor cu animalele.
 
 ### Role of Abstract Class Air
 
@@ -106,6 +106,7 @@ Clasa abstracta `Air` serveste ca baza pentru toate tipurile de aer din sistem. 
     - `calculateQualityInternal()`: Calculul specific al calitatii aerului
     - `getMaxScore()`: Scorul maxim pentru tipul respectiv de aer
     - `addTypeSpecificFields()`: Adaugarea campurilor specifice in JSON
+    - `applyWeatherChange(CommandInput cmd)`: Aplicarea schimbarilor de vreme asupra calitatii aerului
 
 - **Metode concrete**: Ofera implementari comune pentru:
     - `calculateQuality()`: Orchestreaza calculul si aplica rotunjire

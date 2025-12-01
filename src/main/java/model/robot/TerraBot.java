@@ -1,6 +1,8 @@
 package model.robot;
 
 import lombok.Data;
+import model.environment.Section;
+import model.environment.Territory;
 import model.position.Position;
 import java.util.ArrayList;
 
@@ -41,5 +43,15 @@ public class TerraBot {
         this.energyPoints = energyPoints;
         this.knowledgeBase = new KnowledgeBase();
         this.scannedObjects = new ArrayList<>();
+    }
+
+    /**
+     * Gets the current section where the robot is located
+     *
+     * @param territory the territory to get the section from
+     * @return the current section
+     */
+    public Section getCurrentSection(final Territory territory) {
+        return territory.getSections()[position.getX()][position.getY()];
     }
 }

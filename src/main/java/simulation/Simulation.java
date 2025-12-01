@@ -85,18 +85,16 @@ public class Simulation {
         }
         lastUpdatedTimestamp = command.getTimestamp();
 
-        for (int i = 0; i < territory.getHeight(); i++) {
-            for (int j = 0; j < territory.getWidth(); j++) {
-                Soil soil = section[i][j].getSoil();
-                Air air = section[i][j].getAir();
+        Section currentSection = terraBot.getCurrentSection(territory);
+        Soil soil = currentSection.getSoil();
+        Air air = currentSection.getAir();
 
-                soil.calculateQuality();
-                if (changeWeather <= command.getTimestamp()) {
-                    air.calculateQuality();
-                    air.setDesertStorm(false);
-                }
-            }
+        soil.calculateQuality();
+        if (changeWeather <= command.getTimestamp()) {
+            air.calculateQuality();
+            air.setDesertStorm(false);
         }
+
 
         String name = command.getCommand();
         ObjectNode node = mapper.createObjectNode();
@@ -162,10 +160,7 @@ public class Simulation {
     public void printEnvConditions(final ArrayNode output,
                                    final ObjectMapper mapper,
                                    final ObjectNode node) {
-        Section[][] section = territory.getSections();
-        int x = terraBot.getPosition().getX();
-        int y = terraBot.getPosition().getY();
-        Section currentSection = section[x][y];
+        Section currentSection = terraBot.getCurrentSection(territory);
 
         ObjectNode entities = mapper.createObjectNode();
 
@@ -204,8 +199,7 @@ public class Simulation {
                 sectionCoords.add(i);
                 sectionNode.set("section", sectionCoords);
 
-                Section[][] section = territory.getSections();
-                Section currentSection = section[j][i];
+                Section currentSection = territory.getSections()[j][i];
 
                 if (currentSection.getPlant() != null) {
                     objCount++;
@@ -237,8 +231,9 @@ public class Simulation {
      */
     public void moveRobot(final ArrayNode output,
                           final ObjectNode node) {
-        int x = terraBot.getPosition().getX();
-        int y = terraBot.getPosition().getY();
+        Position currentPos = terraBot.getPosition();
+        int x = currentPos.getX();
+        int y = currentPos.getY();
 
         // Calculate costs for all directions
         Direction bestDirection = null;
@@ -257,12 +252,12 @@ public class Simulation {
 
         String msg;
         if (minCost <= terraBot.getEnergyPoints()) {
-            int xNew = bestDirection.getNewX(x);
-            int yNew = bestDirection.getNewY(y);
-            terraBot.getPosition().setX(xNew);
-            terraBot.getPosition().setY(yNew);
+            int newX = bestDirection.getNewX(x);
+            int newY = bestDirection.getNewY(y);
+            currentPos.setX(newX);
+            currentPos.setY(newY);
             terraBot.setEnergyPoints(terraBot.getEnergyPoints() - minCost);
-            msg = "The robot has successfully moved to position (" + xNew + ", " + yNew + ").";
+            msg = "The robot has successfully moved to position (" + newX + ", " + newY + ").";
         } else {
             msg = "ERROR: Not enough battery left. Cannot perform action";
         }
@@ -279,25 +274,7 @@ public class Simulation {
         Section[][] section = territory.getSections();
         Section currentSection = section[x][y];
 
-        double soil = currentSection.getSoil().calculateBlockingProbability();
-        double air = currentSection.getAir().calculateBlockingProbability();
-
-        int count = 2;
-
-        double animal = 0;
-        if (currentSection.getAnimal() != null) {
-            animal = currentSection.getAnimal().calculateBlockingProbability();
-            count++;
-        }
-        double plant = 0;
-        if (currentSection.getPlant() != null) {
-            plant = currentSection.getPlant().calculateBlockingProbability();
-            count++;
-        }
-
-        double sum = soil + air + animal + plant;
-        double mean = Math.abs(sum / count);
-        return (int) Math.round(mean);
+        return currentSection.movementCost();
     }
 
     /**
@@ -313,10 +290,7 @@ public class Simulation {
             return;
         }
 
-        int x = terraBot.getPosition().getX();
-        int y = terraBot.getPosition().getY();
-        Section[][] sections = territory.getSections();
-        Section currentSection = sections[x][y];
+        Section currentSection = terraBot.getCurrentSection(territory);
 
         // Check what object is at current position and activate it
         if (currentSection.getWater() != null && command.getSound().equals("none")
@@ -423,35 +397,18 @@ public class Simulation {
                         soil.setOrganicMatter(soil.getOrganicMatter() + organicMatterToAdd);
                     }
 
-                    // Reset flags after producing organic matter
                     // Feed animal (this sets flags for next timestamp)
-                    feedAnimal(animal, currentSection);
+                    currentSection.feedAnimal(WATER_INTAKE_RATE);
 
                     // Animal moves every 2 iterations
                     // Check if at least 2 timestamps have passed since last move
                     if (currentTimestamp - animal.getLastMoveTimestamp() >= 2) {
                         Section targetSection = moveAnimal(animal, i, j, sections);
-                        feedAnimal(animal, targetSection);
+                        targetSection.feedAnimal(WATER_INTAKE_RATE);
                         animal.setLastMoveTimestamp(animal.getLastMoveTimestamp() + 2);
                     }
                 }
             }
-        }
-    }
-
-    private void feedAnimal(final Animal animal, final Section section) {
-        // Reset flags at the beginning of each timestamp
-        animal.setAtePlant(false);
-        animal.setDrankWater(false);
-
-        boolean drankWater = sectionWithWater(section, animal);
-        boolean atePlant = sectionWithPlant(section, animal);
-
-        if (drankWater) {
-            animal.setDrankWater(true);
-        }
-        if (atePlant) {
-            animal.setAtePlant(true);
         }
     }
 
@@ -560,36 +517,6 @@ public class Simulation {
         return targetSection;
     }
 
-    private boolean sectionWithPlant(final Section sectionWithPlant, final Animal animal) {
-        Plant plant = sectionWithPlant.getPlant();
-        if (plant == null || !plant.isActive()) {
-            return false;
-        }
-
-        animal.setMass(animal.getMass() + plant.getMass());
-        sectionWithPlant.setPlant(null);
-        return true;
-    }
-
-    private boolean sectionWithWater(final Section sectionWithWater, final Animal animal) {
-        Water water = sectionWithWater.getWater();
-        if (water == null || !water.isActive() || water.getMass() == 0) {
-            return false;
-        }
-
-        double waterToDrink = Math.min(animal.getMass() * WATER_INTAKE_RATE, water.getMass());
-
-        if (waterToDrink > water.getMass()) {
-            waterToDrink = water.getMass();
-        }
-        animal.setMass(animal.getMass() + waterToDrink);
-        water.setMass(water.getMass() - waterToDrink);
-        if (water.getMass() == 0) {
-            sectionWithWater.setWater(null);
-        }
-        return true;
-    }
-
     /**
      * Saves a fact into the robot's knowledge base.
      */
@@ -618,22 +545,6 @@ public class Simulation {
         output.add(node);
     }
 
-
-    private boolean hasImprovementFact(final String componentName) {
-        ArrayList<String> facts = terraBot.getKnowledgeBase().getFacts(componentName);
-        if (facts.isEmpty()) {
-            return false;
-        }
-
-        for (String fact : facts) {
-            String firstWord = fact.split("\\s")[0];
-            if (firstWord.equals("Method")) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     /**
      * Applies an improvement to the environment.
      */
@@ -659,16 +570,14 @@ public class Simulation {
             return;
         }
 
-        if (!hasImprovementFact(componentName)) {
+        if (!terraBot.getKnowledgeBase().hasImprovementFact(componentName)) {
             node.put("message", "ERROR: Fact not yet saved. Cannot perform action");
             output.add(node);
 
             return;
         }
 
-        Section[][] sections = territory.getSections();
-        Position pos = terraBot.getPosition();
-        Section currentSection = sections[pos.getX()][pos.getY()];
+        Section currentSection = terraBot.getCurrentSection(territory);
         Air air = currentSection.getAir();
         Soil soil = currentSection.getSoil();
 
@@ -711,17 +620,14 @@ public class Simulation {
     public void changeWeatherConditions(final CommandInput command,
                                         final ArrayNode output,
                                         final ObjectNode node) {
+        Section[][] sections = territory.getSections();
         String msg = "";
         for (int i = 0; i < territory.getHeight(); i++) {
             for (int j = 0; j < territory.getWidth(); j++) {
-                Air air = territory.getSections()[i][j].getAir();
-                if (changeWeatherHelper(command, air)) {
-                    if (air.changeWeather(command)) {
-                        msg = "The weather has changed.";
-                        changeWeather = command.getTimestamp() + WEATHER_COOLDOWN_INTERVAL;
-                    } else {
-                        break;
-                    }
+                Air air = sections[i][j].getAir();
+                if (air.changeWeather(command)) {
+                    msg = "The weather has changed.";
+                    changeWeather = command.getTimestamp() + WEATHER_COOLDOWN_INTERVAL;
                 }
             }
         }
@@ -732,20 +638,6 @@ public class Simulation {
 
         node.put("message", msg);
         output.add(node);
-    }
-
-    private boolean changeWeatherHelper(final CommandInput command, final Air air) {
-        String event = command.getType();
-        String expectedAir = switch (event) {
-            case "rainfall" -> "TropicalAir";
-            case "windfall" -> "PolarAir";
-            case "newSeason" -> "TemperateAir";
-            case "desertStorm" -> "DesertAir";
-            case "peopleHiking" -> "MountainAir";
-            default -> "Unknown";
-        };
-
-        return air.getType().equals(expectedAir);
     }
 
     /**
@@ -771,7 +663,7 @@ public class Simulation {
     }
 
     /**
-     * Prints the robot's knowledge base.
+     * Prints the robot's knowledge base
      */
     public void printKnowledgeBase(final ArrayNode output,
                                    final ObjectMapper mapper,

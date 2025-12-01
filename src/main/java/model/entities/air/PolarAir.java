@@ -2,6 +2,7 @@ package model.entities.air;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import fileio.CommandInput;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -43,5 +44,15 @@ public class PolarAir extends Air {
     @Override
     protected void addTypeSpecificFields(final ObjectNode entities, final ObjectMapper mapper) {
         entities.put("iceCrystalConcentration", iceCrystalConcentration);
+    }
+
+    /**
+     * Applies polar-specific weather change and updates the air quality
+     *
+     * @param command weather-changing command
+     */
+    @Override
+    protected void applyWeatherChange(final CommandInput command) {
+        airQuality -= command.getWindSpeed() * POLAR_STORM_WIND_MUL;
     }
 }

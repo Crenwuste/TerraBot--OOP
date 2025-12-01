@@ -2,6 +2,7 @@ package model.entities.air;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import fileio.CommandInput;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -44,5 +45,18 @@ public class TemperateAir extends Air {
     @Override
     protected void addTypeSpecificFields(final ObjectNode entities, final ObjectMapper mapper) {
         entities.put("pollenLevel", pollenLevel);
+    }
+
+    /**
+     * Applies temperate-specific weather change and updates the air quality
+     *
+     * @param command weather-changing command
+     */
+    @Override
+    protected void applyWeatherChange(final CommandInput command) {
+        if (command.getSeason() == null) {
+            return;
+        }
+        airQuality -= command.getSeason().equalsIgnoreCase("Spring") ? SPRING_SEASON_PENALTY : 0;
     }
 }

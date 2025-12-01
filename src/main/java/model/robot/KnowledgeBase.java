@@ -64,4 +64,26 @@ public class KnowledgeBase {
         }
         return new ArrayList<>();
     }
+
+    /**
+     * Checks if the knowledge base contains an improvement fact (starting with "Method")
+     * for the given topic
+     *
+     * @param topic the topic to check
+     * @return true if an improvement fact exists, false otherwise
+     */
+    public boolean hasImprovementFact(final String topic) {
+        ArrayList<String> topicFacts = getFacts(topic);
+        if (topicFacts.isEmpty()) {
+            return false;
+        }
+
+        for (String fact : topicFacts) {
+            String firstWord = fact.split("\\s")[0];
+            if (firstWord.equals("Method")) {
+                return true;
+            }
+        }
+        return false;
+    }
 }

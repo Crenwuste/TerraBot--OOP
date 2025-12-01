@@ -176,22 +176,17 @@ public abstract class Air implements EnvironmentEntity {
      */
     public boolean changeWeather(final CommandInput cmd) {
         calculateQuality();
-        double aux = airQuality;
-        airQuality = switch (cmd.getType()) {
-            case "rainfall" -> airQuality + (cmd.getRainfall() * RAINFALL_MUL);
-            case "polarStorm" -> airQuality - (cmd.getWindSpeed() * POLAR_STORM_WIND_MUL);
-            case "newSeason" ->
-                    airQuality - (cmd.getSeason().equalsIgnoreCase("Spring")
-                            ? SPRING_SEASON_PENALTY : 0);
-            case "desertStorm" -> {
-                desertStorm = cmd.isDesertStorm();
-                yield  airQuality - (desertStorm ? DESERT_STORM_PENALTY : 0);
-            }
-            case "peopleHiking" -> airQuality - (cmd.getNumberOfHikers() * HIKERS_PENALTY_MUL);
-            default -> airQuality;
-        };
+        double oldQuality = airQuality;
+        applyWeatherChange(cmd);
 
         // false -> if airQuality doesn't change; true -> if it changes
-        return aux != airQuality;
+        return oldQuality != airQuality;
     }
+
+    /**
+     * Applies a type-specific weather change and updates the air quality
+     *
+     * @param cmd weather-changing command
+     */
+    protected abstract void applyWeatherChange(CommandInput cmd);
 }

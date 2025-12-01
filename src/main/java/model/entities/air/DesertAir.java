@@ -2,6 +2,7 @@ package model.entities.air;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import fileio.CommandInput;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -44,5 +45,16 @@ public class DesertAir extends Air {
     @Override
     protected void addTypeSpecificFields(final ObjectNode entities, final ObjectMapper mapper) {
         entities.put("desertStorm", desertStorm);
+    }
+
+    /**
+     * Applies desert-specific weather change and updates the air quality
+     *
+     * @param command weather-changing command
+     */
+    @Override
+    protected void applyWeatherChange(final CommandInput command) {
+        desertStorm = command.isDesertStorm();
+        airQuality -=  desertStorm ? DESERT_STORM_PENALTY : 0;
     }
 }

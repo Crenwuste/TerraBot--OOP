@@ -66,8 +66,7 @@ public class KnowledgeBase {
     }
 
     /**
-     * Checks if the knowledge base contains an improvement fact (starting with "Method")
-     * for the given topic
+     * Checks if the knowledge base contains an improvement fact for the given topic
      *
      * @param topic the topic to check
      * @return true if an improvement fact exists, false otherwise

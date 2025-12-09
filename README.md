@@ -1,16 +1,16 @@
 # TerraBot
 
-TerraBot este un sistem de simulare a mediului inconjurator care modeleaza explorarea unui teritoriu de catre un robot. Proiectul implementeaza o arhitectura orientata pe obiecte pentru gestionarea entitatilor de mediu (aer, sol, apa, plante, animale) si procesarea comenzilor robotului.
+TerraBot is an environmental simulation system that models the exploration of a territory by a robot. The project implements an object-oriented architecture for managing environment entities (air, soil, water, plants, animals) and processing robot commands.
 
 ## Features
 
-- Modelare OOP completa cu ierarhii de mostenire pentru entitati de mediu
-- Implementare a Factory Pattern pentru crearea instantelor de tipuri specifice
-- Utilizarea polimorfismului
-- Simulare a interactiunilor intre robot si mediul inconjurator
-- Gestionare a comenzilor robotului (miscare, scanare, invatare, imbunatatire)
-- Calculare dinamica a calitatii aerului si solului pe baza tipului specific
-- Serializare JSON pentru input/output
+- Complete OOP modeling with inheritance hierarchies for environment entities
+- Factory Pattern implementation for creating instances of specific types
+- Use of polymorphism
+- Simulation of interactions between robot and the surrounding environment
+- Management of robot commands (movement, scanning, learning, improvement)
+- Dynamic calculation of air and soil quality based on specific type
+- JSON serialization for input/output
 
 ## Project Structure
 ```
@@ -66,81 +66,81 @@ src/main/java/
 
 ### Package Descriptions
 
-- **fileio**: Clase responsabile pentru incarcarea si procesarea datelor JSON de intrare.
+- **fileio**: Classes responsible for loading and processing JSON input data.
 
-- **main**: Punctul de intrare al aplicatiei. Clasa Main gestioneaza fluxul principal de executie.
+- **main**: The application entry point. The Main class manages the main execution flow.
 
-- **model.entities**: Pachetul principal pentru entitatile de mediu. Contine interfata EnvironmentEntity si implementarile concrete, organizate in subpachete pentru aer si sol.
+- **model.entities**: The main package for environment entities. Contains the EnvironmentEntity interface and concrete implementations, organized in subpackages for air and soil.
 
-- **model.entities.air**: Ierarhie OOP pentru tipurile de aer. Contine clasa abstracta Air, subclasele concrete si AirFactory.
+- **model.entities.air**: OOP hierarchy for air types. Contains the abstract Air class, concrete subclasses and AirFactory.
 
-- **model.entities.soil**: Ierarhie OOP pentru tipurile de sol. Contine clasa abstracta Soil, subclasele concrete si SoilFactory.
+- **model.entities.soil**: OOP hierarchy for soil types. Contains the abstract Soil class, concrete subclasses and SoilFactory.
 
-- **model.environment**: Gestioneaza structura teritoriului ca o grila bidimensionala de sectiuni.
+- **model.environment**: Manages the territory structure as a two-dimensional grid of sections.
 
-- **model.position**: Reprezentare a pozitiei in teritoriu.
+- **model.position**: Position representation in the territory.
 
-- **model.robot**: Componentele robotului TerraBot, inclusiv baza de cunostinte care gestioneaza facts-urile invatate si logica de miscare.
+- **model.robot**: TerraBot robot components, including the knowledge base that manages learned facts and movement logic.
 
-- **simulation**: Logica de simulare care orchestreaza interactiunile intre robot si mediu.
+- **simulation**: Simulation logic that orchestrates interactions between robot and environment.
 
 ## Architecture & Design
 
 ### Main Classes
 
-- **TerraBot**: Robotul principal care exploreaza teritoriul. Gestioneaza pozitia, energia si baza de cunostinte. Ofera metode pentru accesarea secțiunii curente.
+- **TerraBot**: The main robot that explores the territory. Manages position, energy and the knowledge base. Provides methods for accessing the current section.
 
-- **Simulation**: Clasa centrala care orchestreaza simularea. Proceseaza comenzile, actualizeaza entitatile si calculeaza interactiunile.
+- **Simulation**: The central class that orchestrates the simulation. Processes commands, updates entities and calculates interactions.
 
-- **Territory**: Reprezinta teritoriul ca o grila bidimensionala de sectiuni, fiecare continand entitati de mediu.
+- **Territory**: Represents the territory as a two-dimensional grid of sections, each containing environment entities.
 
-- **Section**: O celula individuala din teritoriu care poate contine sol, aer, apa, plante si animale. Ofera metode pentru calcularea costului de miscare si pentru gestionarea interactiunilor cu animalele.
+- **Section**: An individual cell in the territory that can contain soil, air, water, plants and animals. Provides methods for calculating movement cost and managing interactions with animals.
 
 ### Role of Abstract Class Air
 
-Clasa abstracta `Air` serveste ca baza pentru toate tipurile de aer din sistem. Ea defineste:
+The abstract class `Air` serves as the base for all air types in the system. It defines:
 
-- **Campuri comune**: Toate tipurile de aer au proprietati comune precum `type`, `name`, `mass`, `humidity`, `temperature`, `oxygenLevel`, etc.
+- **Common fields**: All air types have common properties such as `type`, `name`, `mass`, `humidity`, `temperature`, `oxygenLevel`, etc.
 
-- **Metode abstracte**: Defineste contractul pentru metodele care trebuie implementate de subclase:
-    - `calculateQualityInternal()`: Calculul specific al calitatii aerului
-    - `getMaxScore()`: Scorul maxim pentru tipul respectiv de aer
-    - `addTypeSpecificFields()`: Adaugarea campurilor specifice in JSON
-    - `applyWeatherChange(CommandInput cmd)`: Aplicarea schimbarilor de vreme asupra calitatii aerului
+- **Abstract methods**: Defines the contract for methods that must be implemented by subclasses:
+    - `calculateQualityInternal()`: Specific calculation of air quality
+    - `getMaxScore()`: Maximum score for the respective air type
+    - `addTypeSpecificFields()`: Adding specific fields to JSON
+    - `applyWeatherChange(CommandInput cmd)`: Applying weather changes to air quality
 
-- **Metode concrete**: Ofera implementari comune pentru:
-    - `calculateQuality()`: Orchestreaza calculul si aplica rotunjire
-    - `airQualityMessage()`: Traduce calitatea numerica in mesaje
-    - `toxicityAQ()`: Calculeaza toxicitatea
-    - `changeWeather()`: Gestioneaza schimbarile de vreme
+- **Concrete methods**: Provides common implementations for:
+    - `calculateQuality()`: Orchestrates the calculation and applies rounding
+    - `airQualityMessage()`: Translates numerical quality into messages
+    - `toxicityAQ()`: Calculates toxicity
+    - `changeWeather()`: Manages weather changes
 
-- **Constante protejate**: Defineste constantele comune folosite de toate subclasele.
+- **Protected constants**: Defines common constants used by all subclasses.
 
 ### Role of Subclasses (TropicalAir, PolarAir, etc.)
 
-Fiecare subclasa incapsuleaza logica specifica si elimina necesitatea switch-urilor in cod.
+Each subclass encapsulates specific logic and eliminates the need for switches in code.
 
 ### Role of AirFactory
 
-`AirFactory` implementeaza Factory Pattern si are urmatoarele responsabilitati:
+`AirFactory` implements the Factory Pattern and has the following responsibilities:
 
-- **Creare instante**: Metoda `createAir(String type)` creeaza instanta corecta de Air pe baza string-ului de tip.
+- **Instance creation**: The `createAir(String type)` method creates the correct Air instance based on the type string.
 
-- **Initializare din input**: Metoda `createAirFromInput(AirInput)` creeaza si initializeaza complet o instanta de Air din datele de input.
+- **Input initialization**: The `createAirFromInput(AirInput)` method creates and fully initializes an Air instance from input data.
 
-- **Centralizare logica de creare**: Toata logica de creare este concentrata intr-un singur loc, facilitand mentenanta si extensibilitatea.
+- **Creation logic centralization**: All creation logic is concentrated in one place, facilitating maintenance and extensibility.
 
-- **Validare**: Valideaza tipul primit si arunca exceptii clare pentru tipuri necunoscute.
+- **Validation**: Validates the received type and throws clear exceptions for unknown types.
 
-Factory-ul elimina dependenta codului de clasele concrete si permite adaugarea de noi tipuri fara modificarea codului existent.
+The factory eliminates code dependency on concrete classes and allows adding new types without modifying existing code.
 
 ### Design Patterns Used
 
 #### Factory Pattern
-- **AirFactory** si **SoilFactory**: Centralizeaza crearea obiectelor si elimina dependentele directe de clasele concrete. Permite adaugarea de noi tipuri fara modificarea codului.
+- **AirFactory** and **SoilFactory**: Centralize object creation and eliminate direct dependencies on concrete classes. Allows adding new types without modifying code.
 
 #### Template Method Pattern
-- Clasa abstracta `Air` defineste scheletul algoritmului in `calculateQuality()`, iar subclasele implementeaza pasii specifici in `calculateQualityInternal()`. Acelasi pattern se aplica si pentru `Soil`.
+- The abstract class `Air` defines the algorithm skeleton in `calculateQuality()`, and subclasses implement specific steps in `calculateQualityInternal()`. The same pattern applies to `Soil`.
 
 #### Polymorphism
-- Eliminarea switch-urilor prin utilizarea polimorfismului. Codul lucreaza cu tipul abstract `Air`, iar comportamentul specific este determinat la runtime.
+- Eliminating switches through the use of polymorphism. Code works with the abstract `Air` type, and specific behavior is determined at runtime.
